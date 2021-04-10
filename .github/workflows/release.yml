@@ -54,7 +54,6 @@ jobs:
   # and triggering of docker image builds in the apify-actor-docker repo.
   deploy:
     name: Publish to NPM and release images
-    needs: [lint]
     runs-on: ubuntu-latest
     steps:
       -
