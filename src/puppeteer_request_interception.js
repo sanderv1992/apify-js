@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import ow from 'ow';
-import * as _ from 'underscore';
 import { Request as PuppeteerRequest, Page } from 'puppeteer'; // eslint-disable-line no-unused-vars
+import * as _ from './underscore';
 
 // We use weak maps here so that the content gets discarted after page gets closed.
 const pageInterceptRequestHandlersMap = new WeakMap(); // Maps page to an array of request interception handlers.
@@ -50,7 +50,8 @@ const browserifyHeaders = (headers) => {
     const finalHeaders = {};
     // eslint-disable-next-line prefer-const
     for (let [key, value] of Object.entries(headers)) {
-        key = key.toLowerCase()
+        key = key
+            .toLowerCase()
             .split('-')
             .map((str) => str.charAt(0).toUpperCase() + str.slice(1))
             .join('-');
@@ -83,7 +84,10 @@ const handleRequest = async (request, interceptRequestHandlers) => {
     const originalContinue = request.continue.bind(request);
     request.continue = (overrides = {}) => {
         wasContinued = true;
-        const headers = browserifyHeaders({ ...accumulatedOverrides.headers, ...overrides.headers });
+        const headers = browserifyHeaders({
+            ...accumulatedOverrides.headers,
+            ...overrides.headers,
+        });
         Object.assign(accumulatedOverrides, overrides, { headers });
     };
 
@@ -93,11 +97,14 @@ const handleRequest = async (request, interceptRequestHandlers) => {
         return abort(...args);
     });
 
-    request.respond = _.wrap(request.respond.bind(request), (respond, ...args) => {
-        wasResponded = true;
+    request.respond = _.wrap(
+        request.respond.bind(request),
+        (respond, ...args) => {
+            wasResponded = true;
 
-        return respond(...args);
-    });
+            return respond(...args);
+        },
+    );
 
     for (const handler of interceptRequestHandlers) {
         wasContinued = false;
@@ -105,7 +112,9 @@ const handleRequest = async (request, interceptRequestHandlers) => {
         await handler(request);
         // Check that one of the functions was called.
         if (!wasAborted && !wasResponded && !wasContinued) {
-            throw new Error('Intercept request handler must call one of request.continue|respond|abort() methods!');
+            throw new Error(
+                'Intercept request handler must call one of request.continue|respond|abort() methods!',
+            );
         }
 
         // If request was aborted or responded then we can finish immediately.
@@ -225,7 +234,9 @@ export const removeInterceptRequestHandler = async (page, handler) => {
     pageInterceptRequestHandlersMap.set(page, handlersArray);
 
     if (handlersArray.length === 0) {
-        const interceptedRequestsInProgress = pageInterceptedRequestsMap.get(page);
+        const interceptedRequestsInProgress = pageInterceptedRequestsMap.get(
+            page,
+        );
         // Since handlers can be async, we can't simply turn off request interception
         // when there are no handlers, because some handlers could still
         // be in progress and request.abort|respond|continue() would throw.
@@ -235,7 +246,10 @@ export const removeInterceptRequestHandler = async (page, handler) => {
             const onDelete = () => {
                 if (interceptedRequestsInProgress.size === 0) {
                     disableRequestInterception(page);
-                    interceptedRequestsInProgress.removeListener('delete', onDelete);
+                    interceptedRequestsInProgress.removeListener(
+                        'delete',
+                        onDelete,
+                    );
                 }
             };
             interceptedRequestsInProgress.on('delete', onDelete);

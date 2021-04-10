@@ -1,14 +1,15 @@
 /* eslint-disable no-continue */
-import * as _ from 'underscore';
 import * as cheerio from 'cheerio';
 import log from './utils_log';
 import { publicUtils } from './utils';
+import * as _ from './underscore';
 
 // TODO: We could support URLs like https://www.linkedin.com/company/some-company-inc
 
 // Regex inspired by https://zapier.com/blog/extract-links-email-phone-regex/
 // eslint-disable-next-line max-len
-const EMAIL_REGEX_STRING = '(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\\])';
+const EMAIL_REGEX_STRING =
+    '(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\\])';
 
 /**
  * Regular expression to exactly match a single email address.
@@ -51,7 +52,8 @@ const emailsFromText = (text) => {
  * @memberOf social
  */
 const emailsFromUrls = (urls) => {
-    if (!Array.isArray(urls)) throw new Error('The "urls" parameter must be an array');
+    if (!Array.isArray(urls))
+        throw new Error('The "urls" parameter must be an array');
 
     const emails = [];
     for (const url of urls) {
@@ -119,7 +121,10 @@ const SKIP_PHONE_REGEXS = [
     '^[0-9]{4}-[0-9]{2}-[0-9]{2}$',
 ];
 
-const PHONE_REGEX_GLOBAL = new RegExp(`(${PHONE_REGEXS_STRINGS.join('|')})`, 'ig');
+const PHONE_REGEX_GLOBAL = new RegExp(
+    `(${PHONE_REGEXS_STRINGS.join('|')})`,
+    'ig',
+);
 const PHONE_REGEX = new RegExp(`^(${PHONE_REGEXS_STRINGS.join('|')})$`, 'i');
 const SKIP_PHONE_REGEX = new RegExp(`^(${SKIP_PHONE_REGEXS.join('|')})$`, 'i');
 
@@ -160,7 +165,8 @@ const phonesFromText = (text) => {
  * @memberOf social
  */
 const phonesFromUrls = (urls) => {
-    if (!Array.isArray(urls)) throw new Error('The "urls" parameter must be an array');
+    if (!Array.isArray(urls))
+        throw new Error('The "urls" parameter must be an array');
 
     const phones = [];
     for (const url of urls) {
@@ -179,22 +185,27 @@ const phonesFromUrls = (urls) => {
 //   They are used to prevent matching URLs in strings like "blahttps://www.example.com"
 
 // eslint-disable-next-line max-len
-const LINKEDIN_REGEX_STRING = '(?<!\\w)(?:http(?:s)?:\\/\\/)?(?:(?:[a-z]+\\.)?linkedin\\.com\\/in\\/)([a-z0-9\\-_%]{2,60})(?![a-z0-9\\-_%])(?:/)?';
+const LINKEDIN_REGEX_STRING =
+    '(?<!\\w)(?:http(?:s)?:\\/\\/)?(?:(?:[a-z]+\\.)?linkedin\\.com\\/in\\/)([a-z0-9\\-_%]{2,60})(?![a-z0-9\\-_%])(?:/)?';
 
 // TODO: Skip https://www.instagram.com/explore/ !!! and "https://www.instagram.com/_n/", "https://www.instagram.com/_u/"
 // eslint-disable-next-line max-len
-const INSTAGRAM_REGEX_STRING = '(?<!\\w)(?:http(?:s)?:\\/\\/)?(?:(?:www\\.)?(?:instagram\\.com|instagr\\.am)\\/)([a-z0-9_.]{2,30})(?![a-z0-9_.])(?:/)?';
+const INSTAGRAM_REGEX_STRING =
+    '(?<!\\w)(?:http(?:s)?:\\/\\/)?(?:(?:www\\.)?(?:instagram\\.com|instagr\\.am)\\/)([a-z0-9_.]{2,30})(?![a-z0-9_.])(?:/)?';
 
-const TWITTER_RESERVED_PATHS = 'oauth|account|tos|privacy|signup|home|hashtag|search|login|widgets|i|settings|start|share|intent|oct';
+const TWITTER_RESERVED_PATHS =
+    'oauth|account|tos|privacy|signup|home|hashtag|search|login|widgets|i|settings|start|share|intent|oct';
 // eslint-disable-next-line max-len, quotes
 const TWITTER_REGEX_STRING = `(?<!\\w)(?:http(?:s)?:\\/\\/)?(?:www.)?(?:twitter.com)\\/(?!(?:${TWITTER_RESERVED_PATHS})(?:[\\'\\"\\?\\.\\/]|$))([a-z0-9_]{1,15})(?![a-z0-9_])(?:/)?`;
 
 // eslint-disable-next-line max-len, quotes
-const FACEBOOK_RESERVED_PATHS = 'rsrc\\.php|apps|groups|events|l\\.php|friends|images|photo.php|chat|ajax|dyi|common|policies|login|recover|reg|help|security|messages|marketplace|pages|live|bookmarks|games|fundraisers|saved|gaming|salesgroups|jobs|people|ads|ad_campaign|weather|offers|recommendations|crisisresponse|onthisday|developers|settings|connect|business|plugins|intern|sharer';
+const FACEBOOK_RESERVED_PATHS =
+    'rsrc\\.php|apps|groups|events|l\\.php|friends|images|photo.php|chat|ajax|dyi|common|policies|login|recover|reg|help|security|messages|marketplace|pages|live|bookmarks|games|fundraisers|saved|gaming|salesgroups|jobs|people|ads|ad_campaign|weather|offers|recommendations|crisisresponse|onthisday|developers|settings|connect|business|plugins|intern|sharer';
 // eslint-disable-next-line max-len, quotes
 const FACEBOOK_REGEX_STRING = `(?<!\\w)(?:http(?:s)?:\\/\\/)?(?:www.)?(?:facebook.com|fb.com)\\/(?!(?:${FACEBOOK_RESERVED_PATHS})(?:[\\'\\"\\?\\.\\/]|$))(profile\\.php\\?id\\=[0-9]{3,20}|(?!profile\\.php)[a-z0-9\\.]{5,51})(?![a-z0-9\\.])(?:/)?`;
 // eslint-disable-next-line max-len, quotes
-const YOUTUBE_REGEX_STRING = '(?:https?:\\/\\/)?(?:youtu\\.be\\/|(?:www\\.|m\\.)?youtube\\.com\\/(?:watch|v|embed)(?:\\.php)?(?:\\?.*v=|\\/))([a-zA-Z0-9\\-_]+)';
+const YOUTUBE_REGEX_STRING =
+    '(?:https?:\\/\\/)?(?:youtu\\.be\\/|(?:www\\.|m\\.)?youtube\\.com\\/(?:watch|v|embed)(?:\\.php)?(?:\\?.*v=|\\/))([a-zA-Z0-9\\-_]+)';
 
 /** @type RegExp */
 let LINKEDIN_REGEX;
@@ -478,7 +489,9 @@ try {
     // Show warning instead of failing.
     if (e && e.message && e.message.includes('Invalid group')) {
         // eslint-disable-next-line max-len
-        log.warning(`Your version of Node.js (${process.version}) doesn't support the regular expression syntax used by Apify.utils.social tools. The tools will not work. Please upgrade your Node.js to the latest version.`);
+        log.warning(
+            `Your version of Node.js (${process.version}) doesn't support the regular expression syntax used by Apify.utils.social tools. The tools will not work. Please upgrade your Node.js to the latest version.`,
+        );
     } else {
         throw e;
     }

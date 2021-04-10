@@ -2,22 +2,35 @@ import * as fs from 'fs';
 import ow from 'ow';
 import * as vm from 'vm';
 import * as util from 'util';
-import * as _ from 'underscore';
 import * as LruCache from 'apify-shared/lru_cache';
 import { Page, Response, DirectNavigationOptions } from 'puppeteer'; // eslint-disable-line no-unused-vars
 import log from './utils_log';
 import { validators } from './validators';
 
 import { enqueueLinksByClickingElements } from './enqueue_links/click_elements';
-import { addInterceptRequestHandler, removeInterceptRequestHandler } from './puppeteer_request_interception';
+import {
+    addInterceptRequestHandler,
+    removeInterceptRequestHandler,
+} from './puppeteer_request_interception';
 import { openKeyValueStore } from './storages/key_value_store';
+import * as _ from './underscore';
 
 const jqueryPath = require.resolve('jquery');
 const underscorePath = require.resolve('underscore');
 const readFilePromised = util.promisify(fs.readFile);
 
 const MAX_INJECT_FILE_CACHE_SIZE = 10;
-const DEFAULT_BLOCK_REQUEST_URL_PATTERNS = ['.css', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.woff', '.pdf', '.zip'];
+const DEFAULT_BLOCK_REQUEST_URL_PATTERNS = [
+    '.css',
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.svg',
+    '.gif',
+    '.woff',
+    '.pdf',
+    '.zip',
+];
 
 /**
  * @typedef {object} CompiledScriptParams
@@ -32,7 +45,9 @@ const DEFAULT_BLOCK_REQUEST_URL_PATTERNS = ['.css', '.jpg', '.jpeg', '.png', '.s
 /**
  * Cache contents of previously injected files to limit file system access.
  */
-const injectedFilesCache = new LruCache({ maxLength: MAX_INJECT_FILE_CACHE_SIZE });
+const injectedFilesCache = new LruCache({
+    maxLength: MAX_INJECT_FILE_CACHE_SIZE,
+});
 
 /**
  * Injects a JavaScript file into a Puppeteer page.
@@ -55,9 +70,12 @@ const injectedFilesCache = new LruCache({ maxLength: MAX_INJECT_FILE_CACHE_SIZE 
 const injectFile = async (page, filePath, options = {}) => {
     ow(page, ow.object.validate(validators.browserPage));
     ow(filePath, ow.string);
-    ow(options, ow.object.exactShape({
-        surviveNavigations: ow.optional.boolean,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            surviveNavigations: ow.optional.boolean,
+        }),
+    );
 
     let contents = injectedFilesCache.get(filePath);
     if (!contents) {
@@ -183,10 +201,13 @@ const injectUnderscore = (page) => {
  */
 const blockRequests = async (page, options = {}) => {
     ow(page, ow.object.validate(validators.browserPage));
-    ow(options, ow.object.exactShape({
-        urlPatterns: ow.optional.array.ofType(ow.string),
-        extraUrlPatterns: ow.optional.array.ofType(ow.string),
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            urlPatterns: ow.optional.array.ofType(ow.string),
+            extraUrlPatterns: ow.optional.array.ofType(ow.string),
+        }),
+    );
 
     const {
         urlPatterns = DEFAULT_BLOCK_REQUEST_URL_PATTERNS,
@@ -195,7 +216,9 @@ const blockRequests = async (page, options = {}) => {
 
     const patternsToBlock = [...urlPatterns, ...extraUrlPatterns];
 
-    await page._client.send('Network.setBlockedURLs', { urls: patternsToBlock }); // eslint-disable-line no-underscore-dangle
+    await page._client.send('Network.setBlockedURLs', {
+        urls: patternsToBlock,
+    }); // eslint-disable-line no-underscore-dangle
 };
 
 /**
@@ -203,9 +226,14 @@ const blockRequests = async (page, options = {}) => {
  * 'Until this resolves, please use `Apify.utils.puppeteer.blockRequests()`.
  * @deprecated
  */
-const blockResources = async (page, resourceTypes = ['stylesheet', 'font', 'image', 'media']) => {
-    log.deprecated('Apify.utils.puppeteer.blockResources() has a high impact on performance in recent versions of Puppeteer. '
-        + 'Until this resolves, please use Apify.utils.puppeteer.blockRequests()');
+const blockResources = async (
+    page,
+    resourceTypes = ['stylesheet', 'font', 'image', 'media'],
+) => {
+    log.deprecated(
+        'Apify.utils.puppeteer.blockResources() has a high impact on performance in recent versions of Puppeteer. ' +
+            'Until this resolves, please use Apify.utils.puppeteer.blockRequests()',
+    );
     await addInterceptRequestHandler(page, async (request) => {
         const type = request.resourceType();
         if (resourceTypes.includes(type)) await request.abort();
@@ -236,8 +264,10 @@ const cacheResponses = async (page, cache, responseUrlRules) => {
     ow(cache, ow.object);
     ow(responseUrlRules, ow.array.ofType(ow.any(ow.string, ow.regExp)));
 
-    log.deprecated('Apify.utils.puppeteer.cacheResponses() has a high impact on performance '
-        + 'in recent versions of Puppeteer so it\'s use is discouraged until this issue resolves.');
+    log.deprecated(
+        'Apify.utils.puppeteer.cacheResponses() has a high impact on performance ' +
+            "in recent versions of Puppeteer so it's use is discouraged until this issue resolves.",
+    );
 
     await addInterceptRequestHandler(page, async (request) => {
         const url = request.url();
@@ -318,7 +348,8 @@ const compileScript = (scriptString, context = Object.create(null)) => {
         throw err;
     }
 
-    if (!_.isFunction(func)) throw new Error('Compilation result is not a function!'); // This should not happen...
+    if (!_.isFunction(func))
+        throw new Error('Compilation result is not a function!'); // This should not happen...
 
     return func;
 };
@@ -342,20 +373,25 @@ const compileScript = (scriptString, context = Object.create(null)) => {
  */
 export const gotoExtended = async (page, request, gotoOptions = {}) => {
     ow(page, ow.object.validate(validators.browserPage));
-    ow(request, ow.object.partialShape({
-        url: ow.string.url,
-        method: ow.optional.string,
-        headers: ow.optional.object,
-        payload: ow.optional.any(ow.string, ow.buffer),
-    }));
+    ow(
+        request,
+        ow.object.partialShape({
+            url: ow.string.url,
+            method: ow.optional.string,
+            headers: ow.optional.object,
+            payload: ow.optional.any(ow.string, ow.buffer),
+        }),
+    );
     ow(gotoOptions, ow.object);
 
     const { url, method, headers, payload } = request;
 
     if (method !== 'GET' || payload || !_.isEmpty(headers)) {
         // This is not deprecated, we use it to log only once.
-        log.deprecated('Using other request methods than GET, rewriting headers and adding payloads has a high impact on performance '
-            + 'in recent versions of Puppeteer. Use only when necessary.');
+        log.deprecated(
+            'Using other request methods than GET, rewriting headers and adding payloads has a high impact on performance ' +
+                'in recent versions of Puppeteer. Use only when necessary.',
+        );
         let wasCalled = false;
         const interceptRequestHandler = async (interceptedRequest) => {
             // We want to ensure that this won't get executed again in a case that there is a subsequent request
@@ -400,20 +436,33 @@ export const gotoExtended = async (page, request, gotoOptions = {}) => {
  */
 export const infiniteScroll = async (page, options = {}) => {
     ow(page, ow.object.validate(validators.browserPage));
-    ow(options, ow.object.exactShape({
-        timeoutSecs: ow.optional.number,
-        waitForSecs: ow.optional.number,
-        scrollDownAndUp: ow.optional.boolean,
-        buttonSelector: ow.optional.string,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            timeoutSecs: ow.optional.number,
+            waitForSecs: ow.optional.number,
+            scrollDownAndUp: ow.optional.boolean,
+            buttonSelector: ow.optional.string,
+        }),
+    );
 
-    const { timeoutSecs = 0, waitForSecs = 4, scrollDownAndUp = false, buttonSelector } = options;
+    const {
+        timeoutSecs = 0,
+        waitForSecs = 4,
+        scrollDownAndUp = false,
+        buttonSelector,
+    } = options;
 
     let finished;
     const startTime = Date.now();
     const CHECK_INTERVAL_MILLIS = 1000;
     const SCROLL_HEIGHT_IF_ZERO = 10000;
-    const maybeResourceTypesInfiniteScroll = ['xhr', 'fetch', 'websocket', 'other'];
+    const maybeResourceTypesInfiniteScroll = [
+        'xhr',
+        'fetch',
+        'websocket',
+        'other',
+    ];
     const resourcesStats = {
         newRequested: 0,
         oldRequested: 0,
@@ -439,7 +488,10 @@ export const infiniteScroll = async (page, options = {}) => {
             resourcesStats.oldRequested = resourcesStats.newRequested;
         }
         // check if timeout has been reached
-        if (timeoutSecs !== 0 && (Date.now() - startTime) / 1000 > timeoutSecs) {
+        if (
+            timeoutSecs !== 0 &&
+            (Date.now() - startTime) / 1000 > timeoutSecs
+        ) {
             clearInterval(checkFinished);
             finished = true;
         }
@@ -448,7 +500,10 @@ export const infiniteScroll = async (page, options = {}) => {
     const doScroll = async () => {
         /* istanbul ignore next */
         await page.evaluate(async (scrollHeightIfZero) => {
-            const delta = document.body.scrollHeight === 0 ? scrollHeightIfZero : document.body.scrollHeight;
+            const delta =
+                document.body.scrollHeight === 0
+                    ? scrollHeightIfZero
+                    : document.body.scrollHeight;
             window.scrollBy(0, delta);
         }, SCROLL_HEIGHT_IF_ZERO);
     };
@@ -456,7 +511,7 @@ export const infiniteScroll = async (page, options = {}) => {
     const maybeClickButton = async () => {
         const button = await page.$(buttonSelector);
         // Box model returns null if the button is not visible
-        if (button && await button.boxModel()) {
+        if (button && (await button.boxModel())) {
             await button.click({ delay: 10 });
         }
     };
@@ -496,13 +551,16 @@ export const infiniteScroll = async (page, options = {}) => {
  */
 const saveSnapshot = async (page, options = {}) => {
     ow(page, ow.object.validate(validators.browserPage));
-    ow(options, ow.object.exactShape({
-        key: ow.optional.string.nonEmpty,
-        screenshotQuality: ow.optional.number,
-        saveScreenshot: ow.optional.boolean,
-        saveHtml: ow.optional.boolean,
-        keyValueStoreName: ow.optional.string,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            key: ow.optional.string.nonEmpty,
+            screenshotQuality: ow.optional.number,
+            saveScreenshot: ow.optional.boolean,
+            saveHtml: ow.optional.boolean,
+            keyValueStoreName: ow.optional.string,
+        }),
+    );
 
     const {
         key = 'SNAPSHOT',
@@ -517,8 +575,14 @@ const saveSnapshot = async (page, options = {}) => {
 
         if (saveScreenshot) {
             const screenshotName = `${key}.jpg`;
-            const screenshotBuffer = await page.screenshot({ fullPage: true, screenshotQuality, type: 'jpeg' });
-            await store.setValue(screenshotName, screenshotBuffer, { contentType: 'image/jpeg' });
+            const screenshotBuffer = await page.screenshot({
+                fullPage: true,
+                screenshotQuality,
+                type: 'jpeg',
+            });
+            await store.setValue(screenshotName, screenshotBuffer, {
+                contentType: 'image/jpeg',
+            });
         }
         if (saveHtml) {
             const htmlName = `${key}.html`;
@@ -526,7 +590,9 @@ const saveSnapshot = async (page, options = {}) => {
             await store.setValue(htmlName, html, { contentType: 'text/html' });
         }
     } catch (err) {
-        throw new Error(`saveSnapshot with key ${key} failed.\nCause:${err.message}`);
+        throw new Error(
+            `saveSnapshot with key ${key} failed.\nCause:${err.message}`,
+        );
     }
 };
 

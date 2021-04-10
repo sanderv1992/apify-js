@@ -1,7 +1,6 @@
 import { ACTOR_EVENT_NAMES } from 'apify-shared/consts';
 import { cryptoRandomObjectId } from 'apify-shared/utilities';
 import ow, { ArgumentError } from 'ow';
-import * as _ from 'underscore';
 import AutoscaledPool from '../autoscaling/autoscaled_pool'; // eslint-disable-line import/no-duplicates
 import events from '../events';
 import { openSessionPool } from '../session_pool/session_pool'; // eslint-disable-line import/no-duplicates
@@ -9,6 +8,7 @@ import Statistics from './statistics';
 import { addTimeoutToPromise } from '../utils';
 import defaultLog from '../utils_log';
 import { validators } from '../validators';
+import * as _ from '../underscore';
 
 // TYPE IMPORTS
 /* eslint-disable no-unused-vars,import/named,import/no-duplicates,import/order */
@@ -222,7 +222,11 @@ class BasicCrawler {
      * All `BasicCrawler` parameters are passed via an options object.
      */
     constructor(options) {
-        ow(options, 'BasicCrawlerOptions', ow.object.exactShape(BasicCrawler.optionsShape));
+        ow(
+            options,
+            'BasicCrawlerOptions',
+            ow.object.exactShape(BasicCrawler.optionsShape),
+        );
 
         const {
             requestList,
@@ -245,7 +249,8 @@ class BasicCrawler {
         } = options;
 
         if (!requestList && !requestQueue) {
-            const msg = 'At least one of the parameters "options.requestList" and "options.requestQueue" must be provided!';
+            const msg =
+                'At least one of the parameters "options.requestList" and "options.requestQueue" must be provided!';
             throw new ArgumentError(msg, this.constructor);
         }
 
@@ -260,7 +265,9 @@ class BasicCrawler {
         this.handleFailedRequestFunction = handleFailedRequestFunction;
         this.maxRequestRetries = maxRequestRetries;
         this.handledRequestsCount = 0;
-        this.stats = new Statistics({ logMessage: `${log.getOptions().prefix} request statistics:` });
+        this.stats = new Statistics({
+            logMessage: `${log.getOptions().prefix} request statistics:`,
+        });
         /** @type {SessionPoolOptions} */
         this.sessionPoolOptions = {
             ...sessionPoolOptions,
@@ -270,7 +277,9 @@ class BasicCrawler {
         this.crawlingContexts = new Map();
 
         let shouldLogMaxPagesExceeded = true;
-        const isMaxPagesExceeded = () => maxRequestsPerCrawl && maxRequestsPerCrawl <= this.handledRequestsCount;
+        const isMaxPagesExceeded = () =>
+            maxRequestsPerCrawl &&
+            maxRequestsPerCrawl <= this.handledRequestsCount;
 
         const { isFinishedFunction } = autoscaledPoolOptions;
 
@@ -281,8 +290,10 @@ class BasicCrawler {
             isTaskReadyFunction: async () => {
                 if (isMaxPagesExceeded()) {
                     if (shouldLogMaxPagesExceeded) {
-                        log.info('Crawler reached the maxRequestsPerCrawl limit of '
-                            + `${maxRequestsPerCrawl} requests and will shut down soon. Requests that are in progress will be allowed to finish.`);
+                        log.info(
+                            'Crawler reached the maxRequestsPerCrawl limit of ' +
+                                `${maxRequestsPerCrawl} requests and will shut down soon. Requests that are in progress will be allowed to finish.`,
+                        );
                         shouldLogMaxPagesExceeded = false;
                     }
                     return false;
@@ -292,9 +303,11 @@ class BasicCrawler {
             },
             isFinishedFunction: async () => {
                 if (isMaxPagesExceeded()) {
-                    log.info(`Earlier, the crawler reached the maxRequestsPerCrawl limit of ${maxRequestsPerCrawl} requests `
-                        + 'and all requests that were in progress at that time have now finished. '
-                        + `In total, the crawler processed ${this.handledRequestsCount} requests and will shut down.`);
+                    log.info(
+                        `Earlier, the crawler reached the maxRequestsPerCrawl limit of ${maxRequestsPerCrawl} requests ` +
+                            'and all requests that were in progress at that time have now finished. ' +
+                            `In total, the crawler processed ${this.handledRequestsCount} requests and will shut down.`,
+                    );
                     return true;
                 }
 
@@ -304,7 +317,7 @@ class BasicCrawler {
 
                 if (isFinished) {
                     const reason = isFinishedFunction
-                        ? 'Crawler\'s custom isFinishedFunction() returned true, the crawler will shut down.'
+                        ? "Crawler's custom isFinishedFunction() returned true, the crawler will shut down."
                         : 'All the requests from request list and/or request queue have been processed, the crawler will shut down.';
                     log.info(reason);
                 }
@@ -314,12 +327,19 @@ class BasicCrawler {
             log,
         };
 
-        this.autoscaledPoolOptions = _.defaults({}, basicCrawlerAutoscaledPoolConfiguration, autoscaledPoolOptions);
+        this.autoscaledPoolOptions = _.defaults(
+            {},
+            basicCrawlerAutoscaledPoolConfiguration,
+            autoscaledPoolOptions,
+        );
 
         this.isRunningPromise = null;
 
         // Attach a listener to handle migration events gracefully.
-        events.on(ACTOR_EVENT_NAMES.MIGRATING, this._pauseOnMigration.bind(this));
+        events.on(
+            ACTOR_EVENT_NAMES.MIGRATING,
+            this._pauseOnMigration.bind(this),
+        );
     }
 
     /**
@@ -378,7 +398,8 @@ class BasicCrawler {
      * @protected
      * @internal
      */
-    async _handleRequestFunction(crawlingContext) { // eslint-disable-line no-unused-vars
+    async _handleRequestFunction(crawlingContext) {
+        // eslint-disable-line no-unused-vars
         await this.userProvidedHandler(crawlingContext);
     }
 
@@ -390,11 +411,14 @@ class BasicCrawler {
     async _pauseOnMigration() {
         if (this.autoscaledPool) {
             // if run wasn't called, this is going to crash
-            await this.autoscaledPool.pause(SAFE_MIGRATION_WAIT_MILLIS)
+            await this.autoscaledPool
+                .pause(SAFE_MIGRATION_WAIT_MILLIS)
                 .catch((err) => {
                     if (err.message.includes('running tasks did not finish')) {
-                        this.log.error('The crawler was paused due to migration to another host, '
-                            + 'but some requests did not finish in time. Those requests\' results may be duplicated.');
+                        this.log.error(
+                            'The crawler was paused due to migration to another host, ' +
+                                "but some requests did not finish in time. Those requests' results may be duplicated.",
+                        );
                     } else {
                         throw err;
                     }
@@ -404,17 +428,21 @@ class BasicCrawler {
         const requestListPersistPromise = (async () => {
             if (this.requestList) {
                 if (await this.requestList.isFinished()) return;
-                await this.requestList.persistState()
-                    .catch((err) => {
-                        if (err.message.includes('Cannot persist state.')) {
-                            this.log.error('The crawler attempted to persist its request list\'s state and failed due to missing or '
-                                + 'invalid config. Make sure to use either Apify.openRequestList() or the "stateKeyPrefix" option of RequestList '
-                                + 'constructor to ensure your crawling state is persisted through host migrations and restarts.');
-                        } else {
-                            this.log.exception(err, 'An unexpected error occured when the crawler '
-                                + 'attempted to persist its request list\'s state.');
-                        }
-                    });
+                await this.requestList.persistState().catch((err) => {
+                    if (err.message.includes('Cannot persist state.')) {
+                        this.log.error(
+                            "The crawler attempted to persist its request list's state and failed due to missing or " +
+                                'invalid config. Make sure to use either Apify.openRequestList() or the "stateKeyPrefix" option of RequestList ' +
+                                'constructor to ensure your crawling state is persisted through host migrations and restarts.',
+                        );
+                    } else {
+                        this.log.exception(
+                            err,
+                            'An unexpected error occured when the crawler ' +
+                                "attempted to persist its request list's state.",
+                        );
+                    }
+                });
             }
         })();
 
@@ -443,7 +471,10 @@ class BasicCrawler {
         } catch (err) {
             // If requestQueue.addRequest() fails here then we must reclaim it back to
             // the RequestList because probably it's not yet in the queue!
-            this.log.error('Adding of request from the RequestList to the RequestQueue failed, reclaiming request back to the list.', { request });
+            this.log.error(
+                'Adding of request from the RequestList to the RequestQueue failed, reclaiming request back to the list.',
+                { request },
+            );
             await this.requestList.reclaimRequest(request);
             return null;
         }
@@ -469,7 +500,10 @@ class BasicCrawler {
         let session;
 
         if (this.useSessionPool) {
-            [request, session] = await Promise.all([this._fetchNextRequest(), this.sessionPool.getSession()]);
+            [request, session] = await Promise.all([
+                this._fetchNextRequest(),
+                this.sessionPool.getSession(),
+            ]);
         } else {
             request = await this._fetchNextRequest();
         }
@@ -495,7 +529,9 @@ class BasicCrawler {
             await addTimeoutToPromise(
                 this._handleRequestFunction(crawlingContext),
                 this.handleRequestTimeoutMillis,
-                `handleRequestFunction timed out after ${this.handleRequestTimeoutMillis / 1000} seconds.`,
+                `handleRequestFunction timed out after ${
+                    this.handleRequestTimeoutMillis / 1000
+                } seconds.`,
             );
             await source.markRequestHandled(request);
             this.stats.finishJob(statisticsId);
@@ -505,13 +541,20 @@ class BasicCrawler {
             if (session) session.markGood();
         } catch (err) {
             try {
-                await this._requestFunctionErrorHandler(err, crawlingContext, source);
+                await this._requestFunctionErrorHandler(
+                    err,
+                    crawlingContext,
+                    source,
+                );
             } catch (secondaryError) {
-                this.log.exception(secondaryError, 'runTaskFunction error handler threw an exception. '
-                    + 'This places the crawler and its underlying storages into an unknown state and crawling will be terminated. '
-                    + 'This may have happened due to an internal error of Apify\'s API or due to a misconfigured crawler. '
-                    + 'If you are sure that there is no error in your code, selecting "Restart on error" in the actor\'s settings'
-                    + 'will make sure that the run continues where it left off, if programmed to handle restarts correctly.');
+                this.log.exception(
+                    secondaryError,
+                    'runTaskFunction error handler threw an exception. ' +
+                        'This places the crawler and its underlying storages into an unknown state and crawling will be terminated. ' +
+                        "This may have happened due to an internal error of Apify's API or due to a misconfigured crawler. " +
+                        'If you are sure that there is no error in your code, selecting "Restart on error" in the actor\'s settings' +
+                        'will make sure that the run continues where it left off, if programmed to handle restarts correctly.',
+                );
                 throw secondaryError;
             }
         } finally {
@@ -528,7 +571,9 @@ class BasicCrawler {
      */
     async _isTaskReadyFunction() {
         // First check RequestList, since it's only in memory.
-        const isRequestListEmpty = this.requestList ? (await this.requestList.isEmpty()) : true;
+        const isRequestListEmpty = this.requestList
+            ? await this.requestList.isEmpty()
+            : true;
         // If RequestList is not empty, task is ready, no reason to check RequestQueue.
         if (!isRequestListEmpty) return true;
         // If RequestQueue is not empty, task is ready, return true, otherwise false.
@@ -569,7 +614,8 @@ class BasicCrawler {
         const { request } = crawlingContext;
         request.pushErrorMessage(error);
 
-        const shouldRetryRequest = !request.noRetry && request.retryCount < this.maxRequestRetries;
+        const shouldRetryRequest =
+            !request.noRetry && request.retryCount < this.maxRequestRetries;
         if (shouldRetryRequest) {
             request.retryCount++;
             this.log.exception(

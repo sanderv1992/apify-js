@@ -1,8 +1,8 @@
 import ow from 'ow';
-import * as _ from 'underscore';
 import { Page, Response } from 'playwright'; // eslint-disable-line no-unused-vars
 import log from './utils_log';
 import { validators } from './validators';
+import * as _ from './underscore';
 
 import Request from './request'; // eslint-disable-line import/named,no-unused-vars
 
@@ -41,20 +41,25 @@ import Request from './request'; // eslint-disable-line import/named,no-unused-v
  */
 export const gotoExtended = async (page, request, gotoOptions = {}) => {
     ow(page, ow.object.validate(validators.browserPage));
-    ow(request, ow.object.partialShape({
-        url: ow.string.url,
-        method: ow.optional.string,
-        headers: ow.optional.object,
-        payload: ow.optional.any(ow.string, ow.buffer),
-    }));
+    ow(
+        request,
+        ow.object.partialShape({
+            url: ow.string.url,
+            method: ow.optional.string,
+            headers: ow.optional.object,
+            payload: ow.optional.any(ow.string, ow.buffer),
+        }),
+    );
     ow(gotoOptions, ow.object);
 
     const { url, method, headers, payload } = request;
 
     if (method !== 'GET' || payload || !_.isEmpty(headers)) {
         // This is not deprecated, we use it to log only once.
-        log.deprecated('Using other request methods than GET, rewriting headers and adding payloads has a high impact on performance '
-            + 'in recent versions of Playwright. Use only when necessary.');
+        log.deprecated(
+            'Using other request methods than GET, rewriting headers and adding payloads has a high impact on performance ' +
+                'in recent versions of Playwright. Use only when necessary.',
+        );
         let wasCalled = false;
         const interceptRequestHandler = (route) => {
             // We want to ensure that this won't get executed again in a case that there is a subsequent request

@@ -1,5 +1,4 @@
 import ow, { ArgumentError } from 'ow';
-import * as _ from 'underscore';
 import { ACTOR_EVENT_NAMES_EX } from './constants';
 import Request from './request'; // eslint-disable-line import/no-duplicates
 import events from './events';
@@ -7,6 +6,7 @@ import log from './utils_log';
 import { getFirstKey, publicUtils } from './utils';
 import { getValue, setValue } from './storages/key_value_store';
 import { serializeArray, createDeserialize } from './serialization';
+import * as _ from './underscore';
 
 // TYPE IMPORTS
 /* eslint-disable no-unused-vars,import/named,import/no-duplicates,import/order */
@@ -223,20 +223,26 @@ export class RequestList {
         } = options;
 
         if (!(sources || sourcesFunction)) {
-            throw new ArgumentError('At least one of "sources" or "sourcesFunction" must be provided.', this.constructor);
+            throw new ArgumentError(
+                'At least one of "sources" or "sourcesFunction" must be provided.',
+                this.constructor,
+            );
         }
-        ow(options, ow.object.exactShape({
-            sources: ow.optional.array, // check only for array and not subtypes to avoid iteration over the whole thing
-            sourcesFunction: ow.optional.function,
-            persistStateKey: ow.optional.string,
-            persistRequestsKey: ow.optional.string,
-            state: ow.optional.object.exactShape({
-                nextIndex: ow.number,
-                nextUniqueKey: ow.string,
-                inProgress: ow.object,
+        ow(
+            options,
+            ow.object.exactShape({
+                sources: ow.optional.array, // check only for array and not subtypes to avoid iteration over the whole thing
+                sourcesFunction: ow.optional.function,
+                persistStateKey: ow.optional.string,
+                persistRequestsKey: ow.optional.string,
+                state: ow.optional.object.exactShape({
+                    nextIndex: ow.number,
+                    nextUniqueKey: ow.string,
+                    inProgress: ow.object,
+                }),
+                keepDuplicateUrls: ow.optional.boolean,
             }),
-            keepDuplicateUrls: ow.optional.boolean,
-        }));
+        );
 
         this.log = log.child({ prefix: 'RequestList' });
 
@@ -261,9 +267,13 @@ export class RequestList {
         // Note that reclaimedRequests is always a subset of inProgress!
         this.reclaimed = {};
 
-        this.persistStateKey = persistStateKey ? `SDK_${persistStateKey}` : persistStateKey;
+        this.persistStateKey = persistStateKey
+            ? `SDK_${persistStateKey}`
+            : persistStateKey;
         this.persistRequestsKey = persistRequestsKey;
-        this.persistRequestsKey = this.persistRequestsKey ? `SDK_${persistRequestsKey}` : this.persistRequestsKey;
+        this.persistRequestsKey = this.persistRequestsKey
+            ? `SDK_${persistRequestsKey}`
+            : this.persistRequestsKey;
 
         this.initialState = state;
 
@@ -289,11 +299,16 @@ export class RequestList {
      */
     async initialize() {
         if (this.isLoading) {
-            throw new Error('RequestList sources are already loading or were loaded.');
+            throw new Error(
+                'RequestList sources are already loading or were loaded.',
+            );
         }
         this.isLoading = true;
 
-        const [state, persistedRequests] = await this._loadStateAndPersistedRequests();
+        const [
+            state,
+            persistedRequests,
+        ] = await this._loadStateAndPersistedRequests();
 
         // Add persisted requests / new sources in a memory efficient way because with very
         // large lists, we were running out of memory.
@@ -305,9 +320,13 @@ export class RequestList {
 
         this._restoreState(state);
         this.isInitialized = true;
-        if (this.persistRequestsKey && !this.areRequestsPersisted) await this._persistRequests();
+        if (this.persistRequestsKey && !this.areRequestsPersisted)
+            await this._persistRequests();
         if (this.persistStateKey) {
-            events.on(ACTOR_EVENT_NAMES_EX.PERSIST_STATE, this.persistState.bind(this));
+            events.on(
+                ACTOR_EVENT_NAMES_EX.PERSIST_STATE,
+                this.persistState.bind(this),
+            );
         }
     }
 
@@ -355,7 +374,9 @@ export class RequestList {
             delete this.sources[i];
 
             if (source.requestsFromUrl) {
-                const fetchedRequests = await this._fetchRequestsFromUrl(source);
+                const fetchedRequests = await this._fetchRequestsFromUrl(
+                    source,
+                );
                 await this._addFetchedRequests(source, fetchedRequests);
             } else {
                 this._addRequest(source);
@@ -374,7 +395,9 @@ export class RequestList {
                     this._addRequest(source);
                 }
             } catch (err) {
-                throw new Error(`Loading requests with sourcesFunction failed.\nCause: ${err.message}`);
+                throw new Error(
+                    `Loading requests with sourcesFunction failed.\nCause: ${err.message}`,
+                );
             }
         }
     }
@@ -390,7 +413,9 @@ export class RequestList {
      */
     async persistState() {
         if (!this.persistStateKey) {
-            throw new Error('Cannot persist state. options.persistStateKey is not set.');
+            throw new Error(
+                'Cannot persist state. options.persistStateKey is not set.',
+            );
         }
         if (this.isStatePersisted) return;
         try {
@@ -413,7 +438,9 @@ export class RequestList {
      */
     async _persistRequests() {
         const serializedRequests = await serializeArray(this.requests);
-        await setValue(this.persistRequestsKey, serializedRequests, { contentType: CONTENT_TYPE_BINARY });
+        await setValue(this.persistRequestsKey, serializedRequests, {
+            contentType: CONTENT_TYPE_BINARY,
+        });
         this.areRequestsPersisted = true;
     }
 
@@ -430,21 +457,31 @@ export class RequestList {
         if (!state) return;
         // Restore previous state.
         if (typeof state.nextIndex !== 'number' || state.nextIndex < 0) {
-            throw new Error('The state object is invalid: nextIndex must be a non-negative number.');
+            throw new Error(
+                'The state object is invalid: nextIndex must be a non-negative number.',
+            );
         }
         if (state.nextIndex > this.requests.length) {
-            throw new Error('The state object is not consistent with RequestList too few requests loaded.');
+            throw new Error(
+                'The state object is not consistent with RequestList too few requests loaded.',
+            );
         }
-        if (state.nextIndex < this.requests.length
-            && this.requests[state.nextIndex].uniqueKey !== state.nextUniqueKey) {
-            throw new Error('The state object is not consistent with RequestList the order of URLs seems to have changed.');
+        if (
+            state.nextIndex < this.requests.length &&
+            this.requests[state.nextIndex].uniqueKey !== state.nextUniqueKey
+        ) {
+            throw new Error(
+                'The state object is not consistent with RequestList the order of URLs seems to have changed.',
+            );
         }
 
         const deleteFromInProgress = [];
         _.keys(state.inProgress).forEach((uniqueKey) => {
             const index = this.uniqueKeyToIndex[uniqueKey];
             if (typeof index !== 'number') {
-                throw new Error('The state object is not consistent with RequestList. Unknown uniqueKey is present in the state.');
+                throw new Error(
+                    'The state object is not consistent with RequestList. Unknown uniqueKey is present in the state.',
+                );
             }
             if (index >= state.nextIndex) {
                 deleteFromInProgress.push(uniqueKey);
@@ -465,9 +502,12 @@ export class RequestList {
         // As a workaround, we just remove all inProgress requests whose index >= nextIndex,
         // since they will be crawled again.
         if (deleteFromInProgress.length) {
-            this.log.warning('RequestList\'s in-progress field is not consistent, skipping invalid in-progress entries', {
-                deleteFromInProgress,
-            });
+            this.log.warning(
+                "RequestList's in-progress field is not consistent, skipping invalid in-progress entries",
+                {
+                    deleteFromInProgress,
+                },
+            );
             _.each(deleteFromInProgress, (uniqueKey) => {
                 delete state.inProgress[uniqueKey];
             });
@@ -497,11 +537,17 @@ export class RequestList {
             this.log.debug('Loaded state from options.state argument.');
         } else if (this.persistStateKey) {
             state = getValue(this.persistStateKey);
-            if (state) this.log.debug('Loaded state from key value store using the persistStateKey.');
+            if (state)
+                this.log.debug(
+                    'Loaded state from key value store using the persistStateKey.',
+                );
         }
         if (this.persistRequestsKey) {
             persistedRequests = await getValue(this.persistRequestsKey);
-            if (persistedRequests) this.log.debug('Loaded requests from key value store using the persistRequestsKey.');
+            if (persistedRequests)
+                this.log.debug(
+                    'Loaded requests from key value store using the persistRequestsKey.',
+                );
         }
         // Unwraps "state" promise if needed, otherwise no-op.
         return Promise.all([state, persistedRequests]);
@@ -518,9 +564,10 @@ export class RequestList {
 
         return {
             nextIndex: this.nextIndex,
-            nextUniqueKey: this.nextIndex < this.requests.length
-                ? this.requests[this.nextIndex].uniqueKey
-                : null,
+            nextUniqueKey:
+                this.nextIndex < this.requests.length
+                    ? this.requests[this.nextIndex].uniqueKey
+                    : null,
             inProgress: this.inProgress,
         };
     }
@@ -535,7 +582,10 @@ export class RequestList {
     async isEmpty() {
         this._ensureIsInitialized();
 
-        return !getFirstKey(this.reclaimed) && this.nextIndex >= this.requests.length;
+        return (
+            !getFirstKey(this.reclaimed) &&
+            this.nextIndex >= this.requests.length
+        );
     }
 
     /**
@@ -546,7 +596,10 @@ export class RequestList {
     async isFinished() {
         this._ensureIsInitialized();
 
-        return !getFirstKey(this.inProgress) && this.nextIndex >= this.requests.length;
+        return (
+            !getFirstKey(this.inProgress) &&
+            this.nextIndex >= this.requests.length
+        );
     }
 
     /**
@@ -658,14 +711,22 @@ export class RequestList {
         // Download remote resource and parse URLs.
         let urlsArr;
         try {
-            urlsArr = await downloadListOfUrls({ url: requestsFromUrl, urlRegExp: regex });
+            urlsArr = await downloadListOfUrls({
+                url: requestsFromUrl,
+                urlRegExp: regex,
+            });
         } catch (err) {
-            throw new Error(`Cannot fetch a request list from ${requestsFromUrl}: ${err}`);
+            throw new Error(
+                `Cannot fetch a request list from ${requestsFromUrl}: ${err}`,
+            );
         }
 
         // Skip if resource contained no URLs.
         if (!urlsArr.length) {
-            this.log.warning('list fetched, but it is empty.', { requestsFromUrl, regex });
+            this.log.warning('list fetched, but it is empty.', {
+                requestsFromUrl,
+                regex,
+            });
             return [];
         }
 
@@ -706,11 +767,14 @@ export class RequestList {
         this._ensureUniqueKeyValid(uniqueKey);
 
         // Skip requests with duplicate uniqueKey
-        if (!this.uniqueKeyToIndex.hasOwnProperty(uniqueKey)) { // eslint-disable-line no-prototype-builtins
+        if (!this.uniqueKeyToIndex.hasOwnProperty(uniqueKey)) {
+            // eslint-disable-line no-prototype-builtins
             this.uniqueKeyToIndex[uniqueKey] = this.requests.length;
             this.requests.push(request);
         } else if (this.keepDuplicateUrls) {
-            this.log.warning(`Duplicate uniqueKey: ${uniqueKey} found while the keepDuplicateUrls option was set. Check your sources' unique keys.`); // eslint-disable-line max-len
+            this.log.warning(
+                `Duplicate uniqueKey: ${uniqueKey} found while the keepDuplicateUrls option was set. Check your sources' unique keys.`,
+            ); // eslint-disable-line max-len
         }
     }
 
@@ -722,9 +786,12 @@ export class RequestList {
      * @protected
      * @internal
      */
-    _ensureUniqueKeyValid(uniqueKey) { // eslint-disable-line class-methods-use-this
+    _ensureUniqueKeyValid(uniqueKey) {
+        // eslint-disable-line class-methods-use-this
         if (typeof uniqueKey !== 'string' || !uniqueKey) {
-            throw new Error('Request object\'s uniqueKey must be a non-empty string');
+            throw new Error(
+                "Request object's uniqueKey must be a non-empty string",
+            );
         }
     }
 
@@ -737,10 +804,14 @@ export class RequestList {
      */
     _ensureInProgressAndNotReclaimed(uniqueKey) {
         if (!this.inProgress[uniqueKey]) {
-            throw new Error(`The request is not being processed (uniqueKey: ${uniqueKey})`);
+            throw new Error(
+                `The request is not being processed (uniqueKey: ${uniqueKey})`,
+            );
         }
         if (this.reclaimed[uniqueKey]) {
-            throw new Error(`The request was already reclaimed (uniqueKey: ${uniqueKey})`);
+            throw new Error(
+                `The request was already reclaimed (uniqueKey: ${uniqueKey})`,
+            );
         }
     }
 
@@ -753,7 +824,9 @@ export class RequestList {
      */
     _ensureIsInitialized() {
         if (!this.isInitialized) {
-            throw new Error('RequestList is not initialized; you must call "await requestList.initialize()" before using it!');
+            throw new Error(
+                'RequestList is not initialized; you must call "await requestList.initialize()" before using it!',
+            );
         }
     }
 
@@ -840,12 +913,19 @@ export class RequestList {
 export const openRequestList = async (listName, sources, options = {}) => {
     ow(listName, ow.any(ow.string, ow.null));
     ow(sources, ow.array);
-    ow(options, ow.object.is((v) => !Array.isArray(v)));
+    ow(
+        options,
+        ow.object.is((v) => !Array.isArray(v)),
+    );
 
     const rl = new RequestList({
         ...options,
-        persistStateKey: listName ? `${listName}-${STATE_PERSISTENCE_KEY}` : undefined,
-        persistRequestsKey: listName ? `${listName}-${REQUESTS_PERSISTENCE_KEY}` : undefined,
+        persistStateKey: listName
+            ? `${listName}-${STATE_PERSISTENCE_KEY}`
+            : undefined,
+        persistRequestsKey: listName
+            ? `${listName}-${REQUESTS_PERSISTENCE_KEY}`
+            : undefined,
         sources,
     });
     await rl.initialize();

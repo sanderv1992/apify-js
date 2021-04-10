@@ -1,7 +1,10 @@
 import ow from 'ow';
 import * as path from 'path';
-import * as _ from 'underscore';
-import { ENV_VARS, INTEGER_ENV_VARS, ACT_JOB_STATUSES } from 'apify-shared/consts';
+import {
+    ENV_VARS,
+    INTEGER_ENV_VARS,
+    ACT_JOB_STATUSES,
+} from 'apify-shared/consts';
 import log from './utils_log';
 import { EXIT_CODES } from './constants';
 import { initializeEvents, stopEvents } from './events';
@@ -20,6 +23,7 @@ import { maybeStringify } from './storages/key_value_store';
 // eslint-disable-next-line import/named,no-unused-vars,import/first
 import { ActorRun } from './typedefs';
 import { ApifyCallError } from './errors';
+import * as _ from './underscore';
 
 const METAMORPH_AFTER_SLEEP_MILLIS = 300000;
 
@@ -83,11 +87,10 @@ export const getEnv = () => {
 
         // Parse dates and integers.
         if (value && fullName.endsWith('_AT')) value = tryParseDate(value);
-        else if (_.contains(INTEGER_ENV_VARS, fullName)) value = parseInt(value, 10);
+        else if (_.contains(INTEGER_ENV_VARS, fullName))
+            value = parseInt(value, 10);
 
-        envVars[camelCaseName] = value || value === 0
-            ? value
-            : null;
+        envVars[camelCaseName] = value || value === 0 ? value : null;
     });
 
     return envVars;
@@ -166,8 +169,12 @@ export const getEnv = () => {
  * @name main
  */
 export const main = (userFunc) => {
-    if (!userFunc || typeof (userFunc) !== 'function') {
-        throw new Error(`Apify.main() accepts a single parameter that must be a function (was '${userFunc === null ? 'null' : typeof (userFunc)}').`);
+    if (!userFunc || typeof userFunc !== 'function') {
+        throw new Error(
+            `Apify.main() accepts a single parameter that must be a function (was '${
+                userFunc === null ? 'null' : typeof userFunc
+            }').`,
+        );
     }
 
     // Logging some basic system info (apify and apify-client version, NodeJS version, ...).
@@ -176,10 +183,15 @@ export const main = (userFunc) => {
     // Log warning if SDK is outdated.
     printOutdatedSdkWarning();
 
-    if (!process.env[ENV_VARS.LOCAL_STORAGE_DIR] && !process.env[ENV_VARS.TOKEN]) {
+    if (
+        !process.env[ENV_VARS.LOCAL_STORAGE_DIR] &&
+        !process.env[ENV_VARS.TOKEN]
+    ) {
         const dir = path.join(process.cwd(), './apify_storage');
         process.env[ENV_VARS.LOCAL_STORAGE_DIR] = dir;
-        log.warning(`Neither ${ENV_VARS.LOCAL_STORAGE_DIR} nor ${ENV_VARS.TOKEN} environment variable is set, defaulting to ${ENV_VARS.LOCAL_STORAGE_DIR}="${dir}"`); // eslint-disable-line max-len
+        log.warning(
+            `Neither ${ENV_VARS.LOCAL_STORAGE_DIR} nor ${ENV_VARS.TOKEN} environment variable is set, defaulting to ${ENV_VARS.LOCAL_STORAGE_DIR}="${dir}"`,
+        ); // eslint-disable-line max-len
     }
 
     // This is to enable unit tests where process.exit() is mocked and doesn't really exit the process
@@ -305,17 +317,20 @@ export const main = (userFunc) => {
 export const call = async (actId, input, options = {}) => {
     ow(actId, ow.string);
     // input can be anything, no reason to validate
-    ow(options, ow.object.exactShape({
-        contentType: ow.optional.string.nonEmpty,
-        token: ow.optional.string,
-        memoryMbytes: ow.optional.number.not.negative,
-        timeoutSecs: ow.optional.number.not.negative,
-        build: ow.optional.string,
-        waitSecs: ow.optional.number.not.negative,
-        fetchOutput: ow.optional.boolean,
-        disableBodyParser: ow.optional.boolean,
-        webhooks: ow.optional.array.ofType(ow.object),
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            contentType: ow.optional.string.nonEmpty,
+            token: ow.optional.string,
+            memoryMbytes: ow.optional.number.not.negative,
+            timeoutSecs: ow.optional.number.not.negative,
+            build: ow.optional.string,
+            waitSecs: ow.optional.number.not.negative,
+            fetchOutput: ow.optional.boolean,
+            disableBodyParser: ow.optional.boolean,
+            webhooks: ow.optional.array.ofType(ow.object),
+        }),
+    );
 
     const {
         token,
@@ -330,7 +345,9 @@ export const call = async (actId, input, options = {}) => {
     callActorOpts.timeout = timeoutSecs;
 
     if (input) {
-        callActorOpts.contentType = addCharsetToContentType(callActorOpts.contentType);
+        callActorOpts.contentType = addCharsetToContentType(
+            callActorOpts.contentType,
+        );
         input = maybeStringify(input, callActorOpts);
     }
 
@@ -341,7 +358,10 @@ export const call = async (actId, input, options = {}) => {
         run = await client.actor(actId).call(input, callActorOpts);
     } catch (err) {
         if (err.message.startsWith('Waiting for run to finish')) {
-            throw new ApifyCallError({ id: run.id, actId: run.actId }, 'Apify.call() failed, cannot fetch actor run details from the server');
+            throw new ApifyCallError(
+                { id: run.id, actId: run.actId },
+                'Apify.call() failed, cannot fetch actor run details from the server',
+            );
         }
         throw err;
     }
@@ -358,7 +378,9 @@ export const call = async (actId, input, options = {}) => {
     let getRecordOptions = {};
     if (disableBodyParser) getRecordOptions = { buffer: true };
 
-    const { value: body, contentType } = await client.keyValueStore(run.defaultKeyValueStoreId).getRecord('OUTPUT', getRecordOptions);
+    const { value: body, contentType } = await client
+        .keyValueStore(run.defaultKeyValueStoreId)
+        .getRecord('OUTPUT', getRecordOptions);
 
     return { ...run, output: { contentType, body } };
 };
@@ -428,16 +450,19 @@ export const call = async (actId, input, options = {}) => {
 export const callTask = async (taskId, input, options = {}) => {
     ow(taskId, ow.string);
     ow(input, ow.optional.any(ow.string, ow.object));
-    ow(options, ow.object.exactShape({
-        token: ow.optional.string,
-        memoryMbytes: ow.optional.number.not.negative,
-        timeoutSecs: ow.optional.number.not.negative,
-        build: ow.optional.string,
-        waitSecs: ow.optional.number.not.negative,
-        fetchOutput: ow.optional.boolean,
-        disableBodyParser: ow.optional.boolean,
-        webhooks: ow.optional.array.ofType(ow.object),
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            token: ow.optional.string,
+            memoryMbytes: ow.optional.number.not.negative,
+            timeoutSecs: ow.optional.number.not.negative,
+            build: ow.optional.string,
+            waitSecs: ow.optional.number.not.negative,
+            fetchOutput: ow.optional.boolean,
+            disableBodyParser: ow.optional.boolean,
+            webhooks: ow.optional.array.ofType(ow.object),
+        }),
+    );
 
     const {
         token,
@@ -458,7 +483,10 @@ export const callTask = async (taskId, input, options = {}) => {
         run = await client.task(taskId).call(input, callTaskOpts);
     } catch (err) {
         if (err.message.startsWith('Waiting for run to finish')) {
-            throw new ApifyCallError({ id: run.id, actId: run.actId }, 'Apify.call() failed, cannot fetch actor run details from the server');
+            throw new ApifyCallError(
+                { id: run.id, actId: run.actId },
+                'Apify.call() failed, cannot fetch actor run details from the server',
+            );
         }
         throw err;
     }
@@ -476,15 +504,19 @@ export const callTask = async (taskId, input, options = {}) => {
     let getRecordOptions = {};
     if (disableBodyParser) getRecordOptions = { buffer: true };
 
-    const { value: body, contentType } = await client.keyValueStore(run.defaultKeyValueStoreId).getRecord('OUTPUT', getRecordOptions);
+    const { value: body, contentType } = await client
+        .keyValueStore(run.defaultKeyValueStoreId)
+        .getRecord('OUTPUT', getRecordOptions);
 
     return { ...run, output: { contentType, body } };
 };
 
 function isRunUnsuccessful(status) {
-    return status !== ACT_JOB_STATUSES.SUCCEEDED
-        && status !== ACT_JOB_STATUSES.RUNNING
-        && status !== ACT_JOB_STATUSES.READY;
+    return (
+        status !== ACT_JOB_STATUSES.SUCCEEDED &&
+        status !== ACT_JOB_STATUSES.RUNNING &&
+        status !== ACT_JOB_STATUSES.READY
+    );
 }
 
 /**
@@ -516,28 +548,38 @@ function isRunUnsuccessful(status) {
 export const metamorph = async (targetActorId, input, options = {}) => {
     ow(targetActorId, ow.string);
     // input can be anything, no reason to validate
-    ow(options, ow.object.exactShape({
-        contentType: ow.optional.string.nonEmpty,
-        build: ow.optional.string,
-        customAfterSleepMillis: ow.optional.number.not.negative,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            contentType: ow.optional.string.nonEmpty,
+            build: ow.optional.string,
+            customAfterSleepMillis: ow.optional.number.not.negative,
+        }),
+    );
 
-    const {
-        customAfterSleepMillis,
-        ...metamorphOpts
-    } = options;
+    const { customAfterSleepMillis, ...metamorphOpts } = options;
 
     const actorId = process.env[ENV_VARS.ACTOR_ID];
     const runId = process.env[ENV_VARS.ACTOR_RUN_ID];
-    if (!actorId) throw new Error(`Environment variable ${ENV_VARS.ACTOR_ID} must be provided!`);
-    if (!runId) throw new Error(`Environment variable ${ENV_VARS.ACTOR_RUN_ID} must be provided!`);
+    if (!actorId)
+        throw new Error(
+            `Environment variable ${ENV_VARS.ACTOR_ID} must be provided!`,
+        );
+    if (!runId)
+        throw new Error(
+            `Environment variable ${ENV_VARS.ACTOR_RUN_ID} must be provided!`,
+        );
 
     if (input) {
-        metamorphOpts.contentType = addCharsetToContentType(metamorphOpts.contentType);
+        metamorphOpts.contentType = addCharsetToContentType(
+            metamorphOpts.contentType,
+        );
         input = maybeStringify(input, metamorphOpts);
     }
 
-    await utils.apifyClient.run(runId, actorId).metamorph(targetActorId, input, metamorphOpts);
+    await utils.apifyClient
+        .run(runId, actorId)
+        .metamorph(targetActorId, input, metamorphOpts);
 
     // Wait some time for container to be stopped.
     // NOTE: option.customAfterSleepMillis is used in tests
@@ -594,23 +636,30 @@ export const metamorph = async (targetActorId, input, options = {}) => {
  * @name addWebhook
  */
 export const addWebhook = async (options) => {
-    ow(options, ow.object.exactShape({
-        eventTypes: ow.array.ofType(ow.string),
-        requestUrl: ow.string,
-        payloadTemplate: ow.optional.string,
-        idempotencyKey: ow.optional.string,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            eventTypes: ow.array.ofType(ow.string),
+            requestUrl: ow.string,
+            payloadTemplate: ow.optional.string,
+            idempotencyKey: ow.optional.string,
+        }),
+    );
 
     const { eventTypes, requestUrl, payloadTemplate, idempotencyKey } = options;
 
     if (!isAtHome()) {
-        log.warning('Apify.addWebhook() is only supported when running on the Apify platform. The webhook will not be invoked.');
+        log.warning(
+            'Apify.addWebhook() is only supported when running on the Apify platform. The webhook will not be invoked.',
+        );
         return;
     }
 
     const runId = process.env[ENV_VARS.ACTOR_RUN_ID];
     if (!runId) {
-        throw new Error(`Environment variable ${ENV_VARS.ACTOR_RUN_ID} is not set!`);
+        throw new Error(
+            `Environment variable ${ENV_VARS.ACTOR_RUN_ID} is not set!`,
+        );
     }
 
     return apifyClient.webhooks().create({

@@ -1,8 +1,8 @@
 import ow from 'ow';
-import * as _ from 'underscore';
 import { MAX_PAYLOAD_SIZE_BYTES } from 'apify-shared/consts';
 import StorageManager from './storage_manager';
 import log from '../utils_log';
+import * as _ from '../underscore';
 
 /* eslint-disable no-unused-vars,import/named,import/no-duplicates,import/order */
 // @ts-ignore
@@ -29,21 +29,28 @@ const SAFETY_BUFFER_PERCENT = 0.01 / 100; // 0.01%
 export const checkAndSerialize = (item, limitBytes, index) => {
     const s = typeof index === 'number' ? ` at index ${index} ` : ' ';
 
-    const isItemObject = item && typeof item === 'object' && !Array.isArray(item);
+    const isItemObject =
+        item && typeof item === 'object' && !Array.isArray(item);
     if (!isItemObject) {
-        throw new Error(`Data item${s}is not an object. You can push only objects into a dataset.`);
+        throw new Error(
+            `Data item${s}is not an object. You can push only objects into a dataset.`,
+        );
     }
 
     let payload;
     try {
         payload = JSON.stringify(item);
     } catch (err) {
-        throw new Error(`Data item${s}is not serializable to JSON.\nCause: ${err.message}`);
+        throw new Error(
+            `Data item${s}is not serializable to JSON.\nCause: ${err.message}`,
+        );
     }
 
     const bytes = Buffer.byteLength(payload);
     if (bytes > limitBytes) {
-        throw new Error(`Data item${s}is too large (size: ${bytes} bytes, limit: ${limitBytes} bytes)`);
+        throw new Error(
+            `Data item${s}is too large (size: ${bytes} bytes, limit: ${limitBytes} bytes)`,
+        );
     }
     return payload;
 };
@@ -68,10 +75,11 @@ export const chunkBySize = (items, limitBytes) => {
     let lastChunkBytes = 2; // Add 2 bytes for [] wrapper.
     const chunks = [];
     // Split payloads into buckets of valid size.
-    for (const payload of items) { // eslint-disable-line
+    for (const payload of items) {
+        // eslint-disable-line
         const bytes = Buffer.byteLength(payload);
 
-        if (bytes <= limitBytes && (bytes + 2) > limitBytes) {
+        if (bytes <= limitBytes && bytes + 2 > limitBytes) {
             // Handle cases where wrapping with [] would fail, but solo object is fine.
             chunks.push(payload);
             lastChunkBytes = bytes;
@@ -86,7 +94,9 @@ export const chunkBySize = (items, limitBytes) => {
     }
 
     // Stringify array chunks.
-    return chunks.map((chunk) => (typeof chunk === 'string' ? chunk : `[${chunk.join(',')}]`));
+    return chunks.map((chunk) =>
+        typeof chunk === 'string' ? chunk : `[${chunk.join(',')}]`,
+    );
 };
 
 /**
@@ -181,8 +191,11 @@ export class Dataset {
     async pushData(data) {
         ow(data, ow.object);
         // eslint-disable-next-line no-return-await
-        const dispatch = async (payload) => await this.client.pushItems(payload);
-        const limit = MAX_PAYLOAD_SIZE_BYTES - Math.ceil(MAX_PAYLOAD_SIZE_BYTES * SAFETY_BUFFER_PERCENT);
+        const dispatch = async (payload) =>
+            await this.client.pushItems(payload);
+        const limit =
+            MAX_PAYLOAD_SIZE_BYTES -
+            Math.ceil(MAX_PAYLOAD_SIZE_BYTES * SAFETY_BUFFER_PERCENT);
 
         // Handle singular Objects
         if (!Array.isArray(data)) {
@@ -191,7 +204,9 @@ export class Dataset {
         }
 
         // Handle Arrays
-        const payloads = data.map((item, index) => checkAndSerialize(item, limit, index));
+        const payloads = data.map((item, index) =>
+            checkAndSerialize(item, limit, index),
+        );
         const chunks = chunkBySize(payloads, limit);
 
         // Invoke client in series to preserve order of data
@@ -236,7 +251,9 @@ export class Dataset {
             return await this.client.listItems(options);
         } catch (e) {
             if (e.message.includes('Cannot create a string longer than')) {
-                throw new Error('dataset.getData(): The response is too large for parsing. You can fix this by lowering the "limit" option.');
+                throw new Error(
+                    'dataset.getData(): The response is too large for parsing. You can fix this by lowering the "limit" option.',
+                );
             }
             throw e;
         }
@@ -297,7 +314,10 @@ export class Dataset {
      */
     async forEach(iteratee, options = {}, index = 0) {
         if (!options.offset) options.offset = 0;
-        if (options.format && options.format !== 'json') throw new Error('Dataset.forEach/map/reduce() support only a "json" format.');
+        if (options.format && options.format !== 'json')
+            throw new Error(
+                'Dataset.forEach/map/reduce() support only a "json" format.',
+            );
         if (!options.limit) options.limit = DATASET_ITERATORS_DEFAULT_LIMIT;
 
         const { items, total, limit, offset } = await this.getData(options);
@@ -331,15 +351,12 @@ export class Dataset {
         const result = [];
 
         const wrappedFunc = (item, index) => {
-            return Promise
-                .resolve()
+            return Promise.resolve()
                 .then(() => iteratee(item, index))
                 .then((res) => result.push(res));
         };
 
-        return this
-            .forEach(wrappedFunc, options)
-            .then(() => result);
+        return this.forEach(wrappedFunc, options).then(() => result);
     }
 
     /**
@@ -366,8 +383,7 @@ export class Dataset {
         let currentMemo = memo;
 
         const wrappedFunc = (item, index) => {
-            return Promise
-                .resolve()
+            return Promise.resolve()
                 .then(() => {
                     return !index && currentMemo === undefined
                         ? item
@@ -378,9 +394,7 @@ export class Dataset {
                 });
         };
 
-        return this
-            .forEach(wrappedFunc, options)
-            .then(() => currentMemo);
+        return this.forEach(wrappedFunc, options).then(() => currentMemo);
     }
 
     /**
@@ -419,9 +433,12 @@ export class Dataset {
  */
 export const openDataset = (datasetIdOrName, options = {}) => {
     ow(datasetIdOrName, ow.optional.string);
-    ow(options, ow.object.exactShape({
-        forceCloud: ow.optional.boolean,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            forceCloud: ow.optional.boolean,
+        }),
+    );
 
     const manager = new StorageManager(Dataset);
     return manager.openStorage(datasetIdOrName, options);

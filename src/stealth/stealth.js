@@ -1,7 +1,7 @@
-import * as _ from 'underscore';
 import { Page, Browser } from 'puppeteer'; // eslint-disable-line no-unused-vars
 import { cryptoRandomObjectId } from 'apify-shared/utilities';
 import globalLog from '../utils_log';
+import * as _ from '../underscore';
 
 import hidingTricks from './hiding_tricks';
 
@@ -93,8 +93,8 @@ function addStealthDebugToPage(page, evaluationDebugMessage) {
         } else if (text.includes(evaluationDebugMessage)) {
             if (counter > MAX_IFRAMES && !warningLogged) {
                 log.warning(
-                    `Evaluating hiding tricks in too many iframes (limit: ${MAX_IFRAMES}).`
-                    + 'You might experience some performance issues. Try setting \'stealth\' false',
+                    `Evaluating hiding tricks in too many iframes (limit: ${MAX_IFRAMES}).` +
+                        "You might experience some performance issues. Try setting 'stealth' false",
                 );
 
                 warningLogged = true;
@@ -129,10 +129,17 @@ function applyStealthTricks(page, evaluationDebugMessage, options) {
             try {
                 eval(func)(); // eslint-disable-line
             } catch (e) {
-                console.error(`${errorMessagePrefix}: Failed to apply stealth trick reason: ${e.message}`);
+                console.error(
+                    `${errorMessagePrefix}: Failed to apply stealth trick reason: ${e.message}`,
+                );
             }
         }
     };
 
-    return page.evaluateOnNewDocument(addFunctions, functions, STEALTH_ERROR_MESSAGE_PREFIX, evaluationDebugMessage);
+    return page.evaluateOnNewDocument(
+        addFunctions,
+        functions,
+        STEALTH_ERROR_MESSAGE_PREFIX,
+        evaluationDebugMessage,
+    );
 }

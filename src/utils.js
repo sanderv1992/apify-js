@@ -4,7 +4,11 @@ import { ApifyStorageLocal } from '@apify/storage-local';
 import { execSync } from 'child_process';
 import * as ApifyClient from 'apify-client';
 import { version as apifyClientVersion } from 'apify-client/package.json';
-import { ACT_JOB_TERMINAL_STATUSES, ENV_VARS, LOCAL_ENV_VARS } from 'apify-shared/consts';
+import {
+    ACT_JOB_TERMINAL_STATUSES,
+    ENV_VARS,
+    LOCAL_ENV_VARS,
+} from 'apify-shared/consts';
 import * as cheerio from 'cheerio';
 import * as contentTypeParser from 'content-type';
 import * as fs from 'fs';
@@ -14,7 +18,7 @@ import * as os from 'os';
 import ow from 'ow';
 import * as path from 'path';
 import * as semver from 'semver';
-import * as _ from 'underscore';
+
 import { URL } from 'url';
 import * as util from 'util';
 
@@ -27,6 +31,7 @@ import log from './utils_log';
 import * as requestUtils from './utils_request';
 import Request, { RequestOptions } from './request';
 import { ActorRun } from './typedefs';
+import * as _ from './underscore';
 
 /* eslint-enable no-unused-vars,import/named,import/no-duplicates,import/order */
 
@@ -35,13 +40,19 @@ import { ActorRun } from './typedefs';
  * and does not support URLs containing commas or spaces. The URLs also may contain Unicode letters (not symbols).
  * @memberOf utils
  */
-const URL_NO_COMMAS_REGEX = RegExp('https?://(www\\.)?[\\p{L}0-9][-\\p{L}0-9@:%._\\+~#=]{0,254}[\\p{L}0-9]\\.[a-z]{2,63}(:\\d{1,5})?(/[-\\p{L}0-9@:%_\\+.~#?&//=\\(\\)]*)?', 'giu'); // eslint-disable-line
+const URL_NO_COMMAS_REGEX = RegExp(
+    'https?://(www\\.)?[\\p{L}0-9][-\\p{L}0-9@:%._\\+~#=]{0,254}[\\p{L}0-9]\\.[a-z]{2,63}(:\\d{1,5})?(/[-\\p{L}0-9@:%_\\+.~#?&//=\\(\\)]*)?',
+    'giu',
+); // eslint-disable-line
 /**
  * Regular expression that, in addition to the default regular expression `URL_NO_COMMAS_REGEX`, supports matching commas in URL path and query.
  * Note, however, that this may prevent parsing URLs from comma delimited lists, or the URLs may become malformed.
  * @memberOf utils
  */
-const URL_WITH_COMMAS_REGEX = RegExp('https?://(www\\.)?[\\p{L}0-9][-\\p{L}0-9@:%._\\+~#=]{0,254}[\\p{L}0-9]\\.[a-z]{2,63}(:\\d{1,5})?(/[-\\p{L}0-9@:%_\\+,.~#?&//=\\(\\)]*)?', 'giu'); // eslint-disable-line
+const URL_WITH_COMMAS_REGEX = RegExp(
+    'https?://(www\\.)?[\\p{L}0-9][-\\p{L}0-9@:%._\\+~#=]{0,254}[\\p{L}0-9]\\.[a-z]{2,63}(:\\d{1,5})?(/[-\\p{L}0-9@:%_\\+,.~#?&//=\\(\\)]*)?',
+    'giu',
+); // eslint-disable-line
 
 /**
  * Allows turning off the warning that gets printed whenever an actor is run with an outdated SDK on the Apify Platform.
@@ -68,12 +79,15 @@ const psTreePromised = util.promisify(psTree);
  * @return {ApifyClient}
  */
 export const newClient = (options = {}) => {
-    ow(options, ow.object.exactShape({
-        baseUrl: ow.optional.string.url,
-        token: ow.optional.string,
-        maxRetries: ow.optional.number,
-        minDelayBetweenRetriesMillis: ow.optional.number,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            baseUrl: ow.optional.string.url,
+            token: ow.optional.string,
+            maxRetries: ow.optional.number,
+            minDelayBetweenRetriesMillis: ow.optional.number,
+        }),
+    );
     const {
         baseUrl = process.env[ENV_VARS.API_BASE_URL],
         token = process.env[ENV_VARS.TOKEN],
@@ -93,7 +107,8 @@ export const newClient = (options = {}) => {
  */
 export const newStorageLocal = (options = {}) => {
     const {
-        storageDir = process.env[ENV_VARS.LOCAL_STORAGE_DIR] || LOCAL_ENV_VARS[ENV_VARS.LOCAL_STORAGE_DIR],
+        storageDir = process.env[ENV_VARS.LOCAL_STORAGE_DIR] ||
+            LOCAL_ENV_VARS[ENV_VARS.LOCAL_STORAGE_DIR],
     } = options;
 
     const storage = new ApifyStorageLocal({
@@ -176,9 +191,9 @@ const createIsDockerPromise = () => {
         .then((content) => content.indexOf('docker') !== -1)
         .catch(() => false);
 
-    return Promise
-        .all([promise1, promise2])
-        .then(([result1, result2]) => result1 || result2);
+    return Promise.all([promise1, promise2]).then(
+        ([result1, result2]) => result1 || result2,
+    );
 };
 
 /**
@@ -193,7 +208,8 @@ const createIsDockerPromise = () => {
  */
 export const isDocker = (forceReset) => {
     // Parameter forceReset is just internal for unit tests.
-    if (!isDockerPromiseCache || forceReset) isDockerPromiseCache = createIsDockerPromise();
+    if (!isDockerPromiseCache || forceReset)
+        isDockerPromiseCache = createIsDockerPromise();
 
     return isDockerPromiseCache;
 };
@@ -208,12 +224,14 @@ export const isDocker = (forceReset) => {
  * @ignore
  */
 export const weightedAvg = (arrValues, arrWeights) => {
-    const result = arrValues.map((value, i) => {
-        const weight = arrWeights[i];
-        const sum = value * weight; // eslint-disable-line no-shadow
+    const result = arrValues
+        .map((value, i) => {
+            const weight = arrWeights[i];
+            const sum = value * weight; // eslint-disable-line no-shadow
 
-        return [sum, weight];
-    }).reduce((p, c) => [p[0] + c[0], p[1] + c[1]], [0, 0]);
+            return [sum, weight];
+        })
+        .reduce((p, c) => [p[0] + c[0], p[1] + c[1]], [0, 0]);
 
     return result[0] / result[1];
 };
@@ -247,11 +265,13 @@ export const weightedAvg = (arrValues, arrWeights) => {
 export const getMemoryInfo = async () => {
     // lambda does *not* have `ps` and other command line tools
     // required to extract memory usage.
-    const isLambdaEnvironment = process.platform === 'linux'
-        && !!process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE;
+    const isLambdaEnvironment =
+        process.platform === 'linux' &&
+        !!process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE;
 
     // module.exports must be here so that we can mock it.
-    const isDockerVar = !isLambdaEnvironment && (await module.exports.isDocker());
+    const isDockerVar =
+        !isLambdaEnvironment && (await module.exports.isDocker());
 
     let mainProcessBytes = -1;
     let childProcessesBytes = 0;
@@ -261,16 +281,17 @@ export const getMemoryInfo = async () => {
         mainProcessBytes = process.memoryUsage().rss;
 
         // https://stackoverflow.com/a/55914335/129415
-        childProcessesBytes = execSync('cat /proc/meminfo')
-            .toString()
-            .split(/[\n: ]/)
-            .filter((val) => val.trim())[19]
-            // meminfo reports in kb, not bytes
-            * 1000
+        childProcessesBytes =
+            execSync('cat /proc/meminfo')
+                .toString()
+                .split(/[\n: ]/)
+                .filter((val) => val.trim())[19] *
+                // meminfo reports in kb, not bytes
+                1000 -
             // the total used memory is reported by meminfo
             // subtract memory used by the main node proces
             // in order to infer memory used by any child processes
-            - mainProcessBytes;
+            mainProcessBytes;
     } else {
         // Query both root and child processes
         const processes = await psTreePromised(process.pid, true);
@@ -296,7 +317,8 @@ export const getMemoryInfo = async () => {
 
     if (isLambdaEnvironment) {
         // memory size is defined in megabytes
-        totalBytes = parseInt(process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE, 10) * 1000000;
+        totalBytes =
+            parseInt(process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE, 10) * 1000000;
         usedBytes = mainProcessBytes + childProcessesBytes;
         freeBytes = totalBytes - usedBytes;
 
@@ -313,15 +335,18 @@ export const getMemoryInfo = async () => {
             ]);
             totalBytes = parseInt(totalBytesStr, 10);
             // https://unix.stackexchange.com/q/420906
-            const containerRunsWithUnlimitedMemory = totalBytes > Number.MAX_SAFE_INTEGER;
+            const containerRunsWithUnlimitedMemory =
+                totalBytes > Number.MAX_SAFE_INTEGER;
             if (containerRunsWithUnlimitedMemory) totalBytes = os.totalmem();
             usedBytes = parseInt(usedBytesStr, 10);
             freeBytes = totalBytes - usedBytes;
         } catch (err) {
             // log.deprecated logs a warning only once
-            log.deprecated('Your environment is Docker, but your system does not support memory cgroups. '
-                + 'If you\'re running containers with limited memory, memory auto-scaling will not work properly.\n\n'
-                + `Cause: ${err.message}`);
+            log.deprecated(
+                'Your environment is Docker, but your system does not support memory cgroups. ' +
+                    "If you're running containers with limited memory, memory auto-scaling will not work properly.\n\n" +
+                    `Cause: ${err.message}`,
+            );
             totalBytes = os.totalmem();
             freeBytes = os.freemem();
             usedBytes = totalBytes - freeBytes;
@@ -347,7 +372,8 @@ export const getMemoryInfo = async () => {
  * @ignore
  */
 export const getFirstKey = (dict) => {
-    for (const key in dict) { // eslint-disable-line guard-for-in, no-restricted-syntax
+    for (const key in dict) {
+        // eslint-disable-line guard-for-in, no-restricted-syntax
         return key;
     }
 };
@@ -360,9 +386,12 @@ export const getFirstKey = (dict) => {
  */
 export const getTypicalChromeExecutablePath = () => {
     switch (os.platform()) {
-        case 'darwin': return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-        case 'win32': return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-        default: return '/usr/bin/google-chrome';
+        case 'darwin':
+            return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+        case 'win32':
+            return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+        default:
+            return '/usr/bin/google-chrome';
     }
 };
 
@@ -381,7 +410,10 @@ export const addTimeoutToPromise = (promise, timeoutMillis, errorMessage) => {
         ow(promise, ow.promise);
         ow(timeoutMillis, ow.number);
         ow(errorMessage, ow.string);
-        const timeout = setTimeout(() => reject(new Error(errorMessage)), timeoutMillis);
+        const timeout = setTimeout(
+            () => reject(new Error(errorMessage)),
+            timeoutMillis,
+        );
         promise
             .then(resolve)
             .catch(reject)
@@ -438,11 +470,14 @@ export const sleep = (millis) => {
  * @memberOf utils
  */
 const downloadListOfUrls = async (options) => {
-    ow(options, ow.object.exactShape({
-        url: ow.string.url,
-        encoding: ow.optional.string,
-        urlRegExp: ow.optional.regExp,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            url: ow.string.url,
+            encoding: ow.optional.string,
+            urlRegExp: ow.optional.regExp,
+        }),
+    );
     const { url, encoding = 'utf8', urlRegExp = URL_NO_COMMAS_REGEX } = options;
 
     const { requestAsBrowser } = requestUtils;
@@ -460,10 +495,13 @@ const downloadListOfUrls = async (options) => {
  * @memberOf utils
  */
 const extractUrls = (options) => {
-    ow(options, ow.object.exactShape({
-        string: ow.string,
-        urlRegExp: ow.optional.regExp,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            string: ow.string,
+            urlRegExp: ow.optional.regExp,
+        }),
+    );
     const { string, urlRegExp = URL_NO_COMMAS_REGEX } = options;
     return string.match(urlRegExp) || [];
 };
@@ -515,7 +553,10 @@ const htmlToText = (html) => {
      * @type {cheerio.Root}
      * @ignore
      */
-    const $ = typeof html === 'function' ? html : cheerio.load(html, { decodeEntities: true });
+    const $ =
+        typeof html === 'function'
+            ? html
+            : cheerio.load(html, { decodeEntities: true });
     let text = '';
 
     const process = (elems) => {
@@ -525,12 +566,17 @@ const htmlToText = (html) => {
             if (elem.type === 'text') {
                 // Compress spaces, unless we're inside <pre> element
                 let compr;
-                if (elem.parent && elem.parent.tagName === 'pre') compr = elem.data;
+                if (elem.parent && elem.parent.tagName === 'pre')
+                    compr = elem.data;
                 else compr = elem.data.replace(/\s+/g, ' ');
                 // If text is empty or ends with a whitespace, don't add the leading whitepsace
-                if (compr.startsWith(' ') && /(^|\s)$/.test(text)) compr = compr.substr(1);
+                if (compr.startsWith(' ') && /(^|\s)$/.test(text))
+                    compr = compr.substr(1);
                 text += compr;
-            } else if (elem.type === 'comment' || SKIP_TAGS_REGEX.test(elem.tagName)) {
+            } else if (
+                elem.type === 'comment' ||
+                SKIP_TAGS_REGEX.test(elem.tagName)
+            ) {
                 // Skip comments and special elements
             } else if (elem.tagName === 'br') {
                 text += '\n';
@@ -565,7 +611,11 @@ const htmlToText = (html) => {
 
  * @return {Object<string, *>}
  */
-const createRequestDebugInfo = (request, response = {}, additionalFields = {}) => {
+const createRequestDebugInfo = (
+    request,
+    response = {},
+    additionalFields = {},
+) => {
     ow(request, ow.object);
     ow(response, ow.object);
     ow(additionalFields, ow.object);
@@ -578,7 +628,9 @@ const createRequestDebugInfo = (request, response = {}, additionalFields = {}) =
         retryCount: request.retryCount,
         errorMessages: request.errorMessages,
         // Puppeteer response has .status() funtion and NodeJS response ,statusCode property.
-        statusCode: _.isFunction(response.status) ? response.status() : response.statusCode,
+        statusCode: _.isFunction(response.status)
+            ? response.status()
+            : response.statusCode,
         ...additionalFields,
     };
 };
@@ -610,7 +662,8 @@ export const snakeCaseToCamelCase = (snakeCaseStr) => {
 export const printOutdatedSdkWarning = () => {
     if (process.env[DISABLE_OUTDATED_WARNING]) return;
     const latestApifyVersion = process.env[ENV_VARS.SDK_LATEST_VERSION];
-    if (!latestApifyVersion || !semver.lt(apifyVersion, latestApifyVersion)) return;
+    if (!latestApifyVersion || !semver.lt(apifyVersion, latestApifyVersion))
+        return;
 
     // eslint-disable-next-line
     log.warning(`You are using an outdated version (${apifyVersion}) of Apify SDK. We recommend you to update to the latest version (${latestApifyVersion}).
@@ -624,17 +677,22 @@ export const printOutdatedSdkWarning = () => {
  * @ignore
  */
 export const parseContentTypeFromResponse = (response) => {
-    ow(response, ow.object.partialShape({
-        url: ow.string.url,
-        headers: ow.object,
-    }));
+    ow(
+        response,
+        ow.object.partialShape({
+            url: ow.string.url,
+            headers: ow.object,
+        }),
+    );
 
     const { url, headers } = response;
     let parsedContentType;
 
     if (headers['content-type']) {
         try {
-            parsedContentType = contentTypeParser.parse(headers['content-type']);
+            parsedContentType = contentTypeParser.parse(
+                headers['content-type'],
+            );
         } catch (err) {
             // Can not parse content type from Content-Type header. Try to parse it from file extension.
         }
@@ -643,8 +701,9 @@ export const parseContentTypeFromResponse = (response) => {
     // Parse content type from file extension as fallback
     if (!parsedContentType) {
         const parsedUrl = new URL(url);
-        const contentTypeFromExtname = mime.contentType(path.extname(parsedUrl.pathname))
-            || 'application/octet-stream; charset=utf-8'; // Fallback content type, specified in https://tools.ietf.org/html/rfc7231#section-3.1.1.5
+        const contentTypeFromExtname =
+            mime.contentType(path.extname(parsedUrl.pathname)) ||
+            'application/octet-stream; charset=utf-8'; // Fallback content type, specified in https://tools.ietf.org/html/rfc7231#section-3.1.1.5
         parsedContentType = contentTypeParser.parse(contentTypeFromExtname);
     }
 
@@ -684,22 +743,22 @@ export const parseContentTypeFromResponse = (response) => {
  * @ignore
  */
 export const waitForRunToFinish = async (options) => {
-    ow(options, ow.object.exactShape({
-        actorId: ow.string,
-        runId: ow.string,
-        waitSecs: ow.optional.number,
-    }));
+    ow(
+        options,
+        ow.object.exactShape({
+            actorId: ow.string,
+            runId: ow.string,
+            waitSecs: ow.optional.number,
+        }),
+    );
 
-    const {
-        actorId,
-        runId,
-        waitSecs,
-    } = options;
+    const { actorId, runId, waitSecs } = options;
     let run;
 
     const startedAt = Date.now();
     const shouldRepeat = () => {
-        if (waitSecs && (Date.now() - startedAt) / 1000 >= waitSecs) return false;
+        if (waitSecs && (Date.now() - startedAt) / 1000 >= waitSecs)
+            return false;
         if (run && ACT_JOB_TERMINAL_STATUSES.includes(run.status)) return false;
 
         return true;
@@ -710,7 +769,9 @@ export const waitForRunToFinish = async (options) => {
             ? Math.round(waitSecs - (Date.now() - startedAt) / 1000)
             : 999999;
 
-        run = await apifyClient.run(runId, actorId).waitForFinish({ waitSecs: waitForFinish });
+        run = await apifyClient
+            .run(runId, actorId)
+            .waitForFinish({ waitSecs: waitForFinish });
 
         // It might take some time for database replicas to get up-to-date,
         // so getRun() might return null. Wait a little bit and try it again.
@@ -718,7 +779,9 @@ export const waitForRunToFinish = async (options) => {
     }
 
     if (!run) {
-        throw new Error('Waiting for run to finish failed. Cannot fetch actor run details from the server.');
+        throw new Error(
+            'Waiting for run to finish failed. Cannot fetch actor run details from the server.',
+        );
     }
 
     return run;

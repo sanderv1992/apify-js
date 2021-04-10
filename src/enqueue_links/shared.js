@@ -1,7 +1,7 @@
 import { URL } from 'url';
-import * as _ from 'underscore';
 import PseudoUrl from '../pseudo_url';
 import Request from '../request'; // eslint-disable-line import/no-duplicates
+import * as _ from '../underscore';
 
 // TYPES IMPORT
 /* eslint-disable import/order,no-unused-vars,import/named,import/no-duplicates */
@@ -35,7 +35,8 @@ export function constructPseudoUrlInstances(pseudoUrls) {
         // If it's already a PseudoURL, just save it.
         if (item instanceof PseudoUrl) pUrl = item;
         // If it's a string or RegExp, construct a PURL from it directly.
-        else if (typeof item === 'string' || item instanceof RegExp) pUrl = new PseudoUrl(item);
+        else if (typeof item === 'string' || item instanceof RegExp)
+            pUrl = new PseudoUrl(item);
         // If it's an object, look for a purl property and use it and the rest to construct a PURL with a Request template.
         else pUrl = new PseudoUrl(item.purl, _.omit(item, 'purl'));
 
@@ -78,9 +79,7 @@ export function createRequests(requestOptions, pseudoUrls) {
 export function createRequestOptions(sources) {
     return sources
         .map((src) => {
-            const reqOpts = typeof src === 'string'
-                ? { url: src }
-                : src;
+            const reqOpts = typeof src === 'string' ? { url: src } : src;
             // TODO Remove with v1, there are examples
             // which depend on userData existing here.
             reqOpts.userData = { ...reqOpts.userData };
@@ -102,11 +101,16 @@ export function createRequestOptions(sources) {
  * @return {Promise<Array<QueueOperationInfo>>}
  * @ignore
  */
-export async function addRequestsToQueueInBatches(requests, requestQueue, batchSize = 5) {
+export async function addRequestsToQueueInBatches(
+    requests,
+    requestQueue,
+    batchSize = 5,
+) {
     const queueOperationInfos = [];
     for (const request of requests) {
         queueOperationInfos.push(requestQueue.addRequest(request));
-        if (queueOperationInfos.length % batchSize === 0) await Promise.all(queueOperationInfos);
+        if (queueOperationInfos.length % batchSize === 0)
+            await Promise.all(queueOperationInfos);
     }
     return Promise.all(queueOperationInfos);
 }

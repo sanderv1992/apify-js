@@ -1,7 +1,7 @@
 import ow from 'ow';
-import * as _ from 'underscore';
 import log from './utils_log';
 import Request, { RequestOptions } from './request'; // eslint-disable-line import/named,no-unused-vars
+import * as _ from './underscore';
 
 /**
  * Parses PURL into Regex string.
@@ -9,7 +9,10 @@ import Request, { RequestOptions } from './request'; // eslint-disable-line impo
  */
 const parsePurl = (purl) => {
     const trimmedPurl = purl.trim();
-    if (trimmedPurl.length === 0) throw new Error(`Cannot parse PURL '${trimmedPurl}': it must be an non-empty string`);
+    if (trimmedPurl.length === 0)
+        throw new Error(
+            `Cannot parse PURL '${trimmedPurl}': it must be an non-empty string`,
+        );
 
     let regex = '^';
 
@@ -31,12 +34,17 @@ const parsePurl = (purl) => {
             } else {
                 // Outside '[regex]' section, parsing the URL part
                 const code = ch.charCodeAt(0);
-                if ((code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+                if (
+                    (code >= 48 && code <= 57) ||
+                    (code >= 65 && code <= 90) ||
+                    (code >= 97 && code <= 122)
+                ) {
                     // Alphanumeric character => copy it.
                     regex += ch;
                 } else {
                     // Special character => escape it
-                    const hex = code < 16 ? `0${code.toString(16)}` : code.toString(16);
+                    const hex =
+                        code < 16 ? `0${code.toString(16)}` : code.toString(16);
                     regex += `\\x${hex}`;
                 }
             }
@@ -143,8 +151,12 @@ class PseudoUrl {
      * @return {Request}
      */
     createRequest(urlOrProps) {
-        const props = typeof urlOrProps === 'string' ? { url: urlOrProps } : urlOrProps;
-        props.userData = { ...this.requestTemplate.userData, ...props.userData };
+        const props =
+            typeof urlOrProps === 'string' ? { url: urlOrProps } : urlOrProps;
+        props.userData = {
+            ...this.requestTemplate.userData,
+            ...props.userData,
+        };
         const options = { ...this.requestTemplate, ...props }; // props.userData will override template with merged data.
         return new Request(options);
     }

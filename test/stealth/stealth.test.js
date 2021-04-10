@@ -33,7 +33,7 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
     });
 
     test('it works in PuppeteerCrawler', async () => {
-        expect.assertions(1);
+        expect.assertions(4);
         const requestList = await Apify.openRequestList(null, [testUrl]);
         const crawler = new Apify.PuppeteerCrawler({
             requestList,
@@ -45,13 +45,38 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
                 },
             },
             async handlePageFunction({ page }) {
-                const webDriver = await page.evaluate(() => navigator.webdriver);
+                const webDriver = await page.evaluate(
+                    () => navigator.webdriver,
+                );
 
                 expect(webDriver).toBe(false);
             },
         });
         await crawler.run();
     });
+
+    // test('it works in PuppeteerCrawler', async () => {
+    //     expect.assertions(1);
+    //     const requestList = await Apify.openRequestList(null, [testUrl]);
+    //     const crawler = new Apify.PuppeteerCrawler({
+    //         requestList,
+    //         launchContext: {
+    //             stealth: true,
+    //             useChrome: true,
+    //             launchOptions: {
+    //                 headless: true,
+    //             },
+    //         },
+    //         async handlePageFunction({ page }) {
+    //             const webDriver = await page.evaluate(
+    //                 () => navigator.webdriver,
+    //             );
+    //
+    //             expect(webDriver).toBe(false);
+    //         },
+    //     });
+    //     await crawler.run();
+    // });
 
     describe('work in launchPuppeteer', () => {
         let browser;
@@ -82,7 +107,7 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
 
         test('it sets webdriver to false', async () => {
             await page.goto(testUrl);
-            const webDriver = await page.evaluate(() => navigator.webdriver);
+            const webDriver = await page.evaluate(() => !!navigator.webdriver);
 
             expect(webDriver).toBe(false);
         });
@@ -120,7 +145,9 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
 
         test('it emulates console.debug', async () => {
             await page.goto(testUrl);
-            const returnValue = await page.evaluate(() => console.debug('TEST'));
+            const returnValue = await page.evaluate(() =>
+                console.debug('TEST'),
+            );
 
             expect(returnValue).toBe(null);
         });
@@ -153,7 +180,10 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
                 body.appendChild(iframe);
             }, testFuncReturnValue);
             const realReturn = await page.evaluate(
-                () => document.querySelector('iframe').contentWindow.mySuperFunction(), //eslint-disable-line
+                () =>
+                    document
+                        .querySelector('iframe')
+                        .contentWindow.mySuperFunction(), //eslint-disable-line
             );
             expect(realReturn).toEqual(testFuncReturnValue);
         });
@@ -169,11 +199,25 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
             await page.goto(testUrl);
             const fingerPrint = await getFingerPrint(page);
             const testedFingerprint = scanner.analyseFingerprint(fingerPrint);
-            const failedChecks = Object.values(testedFingerprint).filter((val) => val.consistent < 3);
+            const failedChecks = Object.values(testedFingerprint).filter(
+                (val) => val.consistent < 3,
+            );
 
             // webdriver check is failing due to the outdated fp analyzer
-            expect(failedChecks.length).toBe(1);
+            expect(failedChecks.length).toBe(0);
         });
+
+        // test('it should bypass all of the known tests for browser fingerprinting', async () => {
+        //     await page.goto(testUrl);
+        //     const fingerPrint = await getFingerPrint(page);
+        //     const testedFingerprint = scanner.analyseFingerprint(fingerPrint);
+        //     const failedChecks = Object.values(testedFingerprint).filter(
+        //         (val) => val.consistent < 3,
+        //     );
+        //
+        //     // webdriver check is failing due to the outdated fp analyzer
+        //     expect(failedChecks.length).toBe(1);
+        // });
 
         test('logs the evaluation warning in "page" when limit is exceeded', async () => {
             const numberOfIframes = 14;
@@ -193,7 +237,11 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
                 }
             }, numberOfIframes);
 
-            expect(message.includes('Evaluating hiding tricks in too many iframes')).toBeTruthy();
+            expect(
+                message.includes(
+                    'Evaluating hiding tricks in too many iframes',
+                ),
+            ).toBeTruthy();
         });
 
         test('does not log the message when the iframes are under the limit', async () => {
