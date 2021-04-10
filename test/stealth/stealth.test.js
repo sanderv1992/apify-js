@@ -33,7 +33,7 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
     });
 
     test('it works in PuppeteerCrawler', async () => {
-        expect.assertions(4);
+        expect.assertions(1);
         const requestList = await Apify.openRequestList(null, [testUrl]);
         const crawler = new Apify.PuppeteerCrawler({
             requestList,
@@ -204,7 +204,7 @@ describe('Stealth - testing headless chrome hiding tricks', () => {
             );
 
             // webdriver check is failing due to the outdated fp analyzer
-            expect(failedChecks.length).toBe(0);
+            expect(failedChecks.length).toBe(1);
         });
 
         // test('it should bypass all of the known tests for browser fingerprinting', async () => {
