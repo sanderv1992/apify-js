@@ -1,6 +1,6 @@
 // eslint-disable-next-line max-classes-per-file
 import sinon from 'sinon';
-import _ from 'underscore';
+import * as _ from '../src/underscore';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -35,10 +35,22 @@ describe('utils.newClient()', () => {
 
 describe('utils.addCharsetToContentType()', () => {
     test('works', () => {
-        expect(utils.addCharsetToContentType('application/json; charset=something')).toBe('application/json; charset=something');
-        expect(utils.addCharsetToContentType('application/json; foo=bar; charset=something')).toBe('application/json; foo=bar; charset=something');
-        expect(utils.addCharsetToContentType('application/json; foo=bar')).toBe('application/json; charset=utf-8; foo=bar');
-        expect(utils.addCharsetToContentType('application/json')).toBe('application/json; charset=utf-8');
+        expect(
+            utils.addCharsetToContentType(
+                'application/json; charset=something',
+            ),
+        ).toBe('application/json; charset=something');
+        expect(
+            utils.addCharsetToContentType(
+                'application/json; foo=bar; charset=something',
+            ),
+        ).toBe('application/json; foo=bar; charset=something');
+        expect(utils.addCharsetToContentType('application/json; foo=bar')).toBe(
+            'application/json; charset=utf-8; foo=bar',
+        );
+        expect(utils.addCharsetToContentType('application/json')).toBe(
+            'application/json; charset=utf-8',
+        );
         expect(utils.addCharsetToContentType(null)).toBe(null);
         expect(utils.addCharsetToContentType(undefined)).toEqual(undefined);
     });
@@ -46,55 +58,71 @@ describe('utils.addCharsetToContentType()', () => {
 
 describe('utils.isDocker()', () => {
     test('works for dockerenv && cgroup', () => {
-        sinon.stub(fs, 'stat').callsFake((filePath, callback) => callback(null));
-        sinon.stub(fs, 'readFile').callsFake((filePath, encoding, callback) => callback(null, 'something ... docker ... something'));
+        sinon
+            .stub(fs, 'stat')
+            .callsFake((filePath, callback) => callback(null));
+        sinon
+            .stub(fs, 'readFile')
+            .callsFake((filePath, encoding, callback) =>
+                callback(null, 'something ... docker ... something'),
+            );
 
-        return utils
-            .isDocker(true)
-            .then((is) => {
-                expect(is).toBe(true);
-                fs.stat.restore();
-                fs.readFile.restore();
-            });
+        return utils.isDocker(true).then((is) => {
+            expect(is).toBe(true);
+            fs.stat.restore();
+            fs.readFile.restore();
+        });
     });
 
     test('works for dockerenv', () => {
-        sinon.stub(fs, 'stat').callsFake((filePath, callback) => callback(null));
-        sinon.stub(fs, 'readFile').callsFake((filePath, encoding, callback) => callback(null, 'something ... ... something'));
+        sinon
+            .stub(fs, 'stat')
+            .callsFake((filePath, callback) => callback(null));
+        sinon
+            .stub(fs, 'readFile')
+            .callsFake((filePath, encoding, callback) =>
+                callback(null, 'something ... ... something'),
+            );
 
-        return utils
-            .isDocker(true)
-            .then((is) => {
-                expect(is).toBe(true);
-                fs.stat.restore();
-                fs.readFile.restore();
-            });
+        return utils.isDocker(true).then((is) => {
+            expect(is).toBe(true);
+            fs.stat.restore();
+            fs.readFile.restore();
+        });
     });
 
     test('works for cgroup', () => {
-        sinon.stub(fs, 'stat').callsFake((filePath, callback) => callback(new Error()));
-        sinon.stub(fs, 'readFile').callsFake((filePath, encoding, callback) => callback(null, 'something ... docker ... something'));
+        sinon
+            .stub(fs, 'stat')
+            .callsFake((filePath, callback) => callback(new Error()));
+        sinon
+            .stub(fs, 'readFile')
+            .callsFake((filePath, encoding, callback) =>
+                callback(null, 'something ... docker ... something'),
+            );
 
-        return utils
-            .isDocker(true)
-            .then((is) => {
-                expect(is).toBe(true);
-                fs.stat.restore();
-                fs.readFile.restore();
-            });
+        return utils.isDocker(true).then((is) => {
+            expect(is).toBe(true);
+            fs.stat.restore();
+            fs.readFile.restore();
+        });
     });
 
     test('works for nothing', () => {
-        sinon.stub(fs, 'stat').callsFake((filePath, callback) => callback(new Error()));
-        sinon.stub(fs, 'readFile').callsFake((filePath, encoding, callback) => callback(null, 'something ... ... something'));
+        sinon
+            .stub(fs, 'stat')
+            .callsFake((filePath, callback) => callback(new Error()));
+        sinon
+            .stub(fs, 'readFile')
+            .callsFake((filePath, encoding, callback) =>
+                callback(null, 'something ... ... something'),
+            );
 
-        return utils
-            .isDocker(true)
-            .then((is) => {
-                expect(is).toBe(false);
-                fs.stat.restore();
-                fs.readFile.restore();
-            });
+        return utils.isDocker(true).then((is) => {
+            expect(is).toBe(false);
+            fs.stat.restore();
+            fs.readFile.restore();
+        });
     });
 });
 
@@ -103,20 +131,11 @@ describe('utils.getMemoryInfo()', () => {
         const osMock = sinon.mock(os);
         const utilsMock = sinon.mock(utils);
 
-        utilsMock
-            .expects('isDocker')
-            .once()
-            .returns(Promise.resolve(false));
+        utilsMock.expects('isDocker').once().returns(Promise.resolve(false));
 
-        osMock
-            .expects('freemem')
-            .atLeast(1)
-            .returns(222);
+        osMock.expects('freemem').atLeast(1).returns(222);
 
-        osMock
-            .expects('totalmem')
-            .atLeast(1)
-            .returns(333);
+        osMock.expects('totalmem').atLeast(1).returns(333);
 
         try {
             const data = await Apify.getMemoryInfo();
@@ -135,18 +154,15 @@ describe('utils.getMemoryInfo()', () => {
     test('works WITHOUT child process inside the container', async () => {
         const utilsMock = sinon.mock(utils);
 
-        utilsMock
-            .expects('isDocker')
-            .once()
-            .returns(Promise.resolve(true));
+        utilsMock.expects('isDocker').once().returns(Promise.resolve(true));
 
-        sinon
-            .stub(fs, 'readFile')
-            .callsFake((filePath, callback) => {
-                if (filePath === '/sys/fs/cgroup/memory/memory.limit_in_bytes') callback(null, '333');
-                else if (filePath === '/sys/fs/cgroup/memory/memory.usage_in_bytes') callback(null, '111');
-                else throw new Error('Invalid path');
-            });
+        sinon.stub(fs, 'readFile').callsFake((filePath, callback) => {
+            if (filePath === '/sys/fs/cgroup/memory/memory.limit_in_bytes')
+                callback(null, '333');
+            else if (filePath === '/sys/fs/cgroup/memory/memory.usage_in_bytes')
+                callback(null, '111');
+            else throw new Error('Invalid path');
+        });
 
         try {
             const data = await Apify.getMemoryInfo();
@@ -167,20 +183,11 @@ describe('utils.getMemoryInfo()', () => {
         const utilsMock = sinon.mock(utils);
         process.env[ENV_VARS.HEADLESS] = '1';
 
-        utilsMock
-            .expects('isDocker')
-            .once()
-            .returns(Promise.resolve(false));
+        utilsMock.expects('isDocker').once().returns(Promise.resolve(false));
 
-        osMock
-            .expects('freemem')
-            .atLeast(1)
-            .returns(222);
+        osMock.expects('freemem').atLeast(1).returns(222);
 
-        osMock
-            .expects('totalmem')
-            .atLeast(1)
-            .returns(333);
+        osMock.expects('totalmem').atLeast(1).returns(333);
 
         let browser;
         try {
@@ -205,18 +212,15 @@ describe('utils.getMemoryInfo()', () => {
         const utilsMock = sinon.mock(utils);
         process.env[ENV_VARS.HEADLESS] = '1';
 
-        utilsMock
-            .expects('isDocker')
-            .once()
-            .returns(Promise.resolve(true));
+        utilsMock.expects('isDocker').once().returns(Promise.resolve(true));
 
-        sinon
-            .stub(fs, 'readFile')
-            .callsFake((filePath, callback) => {
-                if (filePath === '/sys/fs/cgroup/memory/memory.limit_in_bytes') callback(null, '333');
-                else if (filePath === '/sys/fs/cgroup/memory/memory.usage_in_bytes') callback(null, '111');
-                else throw new Error('Invalid path');
-            });
+        sinon.stub(fs, 'readFile').callsFake((filePath, callback) => {
+            if (filePath === '/sys/fs/cgroup/memory/memory.limit_in_bytes')
+                callback(null, '333');
+            else if (filePath === '/sys/fs/cgroup/memory/memory.usage_in_bytes')
+                callback(null, '111');
+            else throw new Error('Invalid path');
+        });
 
         let browser;
         try {
@@ -253,7 +257,9 @@ describe('utils.weightedAvg()', () => {
         expect(utils.weightedAvg([10, 10, 10], [1, 1, 1])).toBe(10);
         expect(utils.weightedAvg([5, 10, 15], [1, 1, 1])).toBe(10);
         expect(utils.weightedAvg([10, 10, 10], [0.5, 1, 1.5])).toBe(10);
-        expect(utils.weightedAvg([29, 35, 89], [13, 91, 3])).toEqual(((29 * 13) + (35 * 91) + (89 * 3)) / (13 + 91 + 3));
+        expect(utils.weightedAvg([29, 35, 89], [13, 91, 3])).toEqual(
+            (29 * 13 + 35 * 91 + 89 * 3) / (13 + 91 + 3),
+        );
         expect(utils.weightedAvg([], [])).toEqual(NaN);
         expect(utils.weightedAvg([1], [0])).toEqual(NaN);
         expect(utils.weightedAvg([], [1])).toEqual(NaN);
@@ -297,19 +303,31 @@ describe('Apify.utils.extractUrls()', () => {
     const { extractUrls, URL_WITH_COMMAS_REGEX } = utils.publicUtils;
 
     const getURLData = (filename) => {
-        const string = fs.readFileSync(path.join(__dirname, 'data', filename), 'utf8');
-        const array = string.trim().split(/[\r\n]+/g).map((u) => u.trim());
+        const string = fs.readFileSync(
+            path.join(__dirname, 'data', filename),
+            'utf8',
+        );
+        const array = string
+            .trim()
+            .split(/[\r\n]+/g)
+            .map((u) => u.trim());
         return { string, array };
     };
 
-    const makeJSON = ({ string, array }) => JSON.stringify({
-        one: [{ http: string }],
-        two: array.map((url) => ({ num: 123, url })),
-    });
-    const makeCSV = (array, delimiter) => array.map((url) => ['ABC', 233, url, '.'].join(delimiter || ',')).join('\n');
+    const makeJSON = ({ string, array }) =>
+        JSON.stringify({
+            one: [{ http: string }],
+            two: array.map((url) => ({ num: 123, url })),
+        });
+    const makeCSV = (array, delimiter) =>
+        array
+            .map((url) => ['ABC', 233, url, '.'].join(delimiter || ','))
+            .join('\n');
 
     const makeText = (array) => {
-        const text = fs.readFileSync(path.join(__dirname, 'data', 'lipsum.txt'), 'utf8').split('');
+        const text = fs
+            .readFileSync(path.join(__dirname, 'data', 'lipsum.txt'), 'utf8')
+            .split('');
         const ID = 'ů';
         const maxIndex = text.length - 1;
         array.forEach((__, index) => {
@@ -320,7 +338,10 @@ describe('Apify.utils.extractUrls()', () => {
                 text[indexInText] = ID;
             }
         });
-        return array.reduce((string, url) => string.replace(ID, ` ${url} `), text.join(''));
+        return array.reduce(
+            (string, url) => string.replace(ID, ` ${url} `),
+            text.join(''),
+        );
     };
 
     test('extracts simple URLs', () => {
@@ -335,7 +356,10 @@ describe('Apify.utils.extractUrls()', () => {
     });
     test('extracts unicode URLs with commas', () => {
         const { string, array } = getURLData(COMMA_URL_LIST);
-        const extracted = extractUrls({ string, urlRegExp: URL_WITH_COMMAS_REGEX });
+        const extracted = extractUrls({
+            string,
+            urlRegExp: URL_WITH_COMMAS_REGEX,
+        });
         expect(extracted).toEqual(array);
     });
     test('extracts tricky URLs', () => {
@@ -363,7 +387,10 @@ describe('Apify.utils.extractUrls()', () => {
     test('extracts unicode URLs with commas from JSON', () => {
         const d = getURLData(COMMA_URL_LIST);
         const string = makeJSON(d);
-        const extracted = extractUrls({ string, urlRegExp: URL_WITH_COMMAS_REGEX });
+        const extracted = extractUrls({
+            string,
+            urlRegExp: URL_WITH_COMMAS_REGEX,
+        });
         expect(extracted).toEqual(d.array.concat(d.array));
     });
     test('extracts tricky URLs from JSON', () => {
@@ -393,7 +420,10 @@ describe('Apify.utils.extractUrls()', () => {
     test('extracts unicode URLs with commas from semicolon CSV', () => {
         const { array } = getURLData(COMMA_URL_LIST);
         const string = makeCSV(array, ';');
-        const extracted = extractUrls({ string, urlRegExp: URL_WITH_COMMAS_REGEX });
+        const extracted = extractUrls({
+            string,
+            urlRegExp: URL_WITH_COMMAS_REGEX,
+        });
         expect(extracted).toEqual(array);
     });
     test('extracts tricky URLs from CSV', () => {
@@ -423,7 +453,10 @@ describe('Apify.utils.extractUrls()', () => {
     test('extracts unicode URLs with commas from Text', () => {
         const { array } = getURLData(COMMA_URL_LIST);
         const string = makeText(array);
-        const extracted = extractUrls({ string, urlRegExp: URL_WITH_COMMAS_REGEX });
+        const extracted = extractUrls({
+            string,
+            urlRegExp: URL_WITH_COMMAS_REGEX,
+        });
         expect(extracted).toEqual(array);
     });
     test('extracts tricky URLs from Text', () => {
@@ -451,13 +484,21 @@ describe('Apify.utils.downloadListOfUrls()', () => {
     });
 
     test('downloads a list of URLs', () => {
-        const text = fs.readFileSync(path.join(__dirname, 'data', 'simple_url_list.txt'), 'utf8');
-        const arr = text.trim().split(/[\r\n]+/g).map((u) => u.trim());
+        const text = fs.readFileSync(
+            path.join(__dirname, 'data', 'simple_url_list.txt'),
+            'utf8',
+        );
+        const arr = text
+            .trim()
+            .split(/[\r\n]+/g)
+            .map((u) => u.trim());
         stub.resolves({ body: text });
 
-        return expect(downloadListOfUrls({
-            url: 'http://www.nowhere12345.com',
-        })).resolves.toEqual(arr);
+        return expect(
+            downloadListOfUrls({
+                url: 'http://www.nowhere12345.com',
+            }),
+        ).resolves.toEqual(arr);
     });
 });
 
@@ -500,36 +541,84 @@ describe('utils.htmlToText()', () => {
         checkHtmlToText('   Plain    text     node    ', 'Plain text node');
         checkHtmlToText('   \nPlain    text     node  \n  ', 'Plain text node');
 
-        checkHtmlToText('<h1>Header 1</h1> <h2>Header 2</h2>', 'Header 1\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1> <h2>Header 2</h2><br>', 'Header 1\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1> <h2>Header 2</h2><br><br>', 'Header 1\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1> <h2>Header 2</h2><br><br><br>', 'Header 1\nHeader 2');
+        checkHtmlToText(
+            '<h1>Header 1</h1> <h2>Header 2</h2>',
+            'Header 1\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1> <h2>Header 2</h2><br>',
+            'Header 1\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1> <h2>Header 2</h2><br><br>',
+            'Header 1\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1> <h2>Header 2</h2><br><br><br>',
+            'Header 1\nHeader 2',
+        );
 
-        checkHtmlToText('<h1>Header 1</h1><br><h2>Header 2</h2><br><br><br>', 'Header 1\n\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1> <br> <h2>Header 2</h2><br><br><br>', 'Header 1\n\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1>  \n <br>\n<h2>Header 2</h2><br><br><br>', 'Header 1\n\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1>  \n <br>\n<br><h2>Header 2</h2><br><br><br>', 'Header 1\n\n\nHeader 2');
-        checkHtmlToText('<h1>Header 1</h1>  \n <br>\n<br><br><h2>Header 2</h2><br><br><br>', 'Header 1\n\n\n\nHeader 2');
+        checkHtmlToText(
+            '<h1>Header 1</h1><br><h2>Header 2</h2><br><br><br>',
+            'Header 1\n\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1> <br> <h2>Header 2</h2><br><br><br>',
+            'Header 1\n\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1>  \n <br>\n<h2>Header 2</h2><br><br><br>',
+            'Header 1\n\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1>  \n <br>\n<br><h2>Header 2</h2><br><br><br>',
+            'Header 1\n\n\nHeader 2',
+        );
+        checkHtmlToText(
+            '<h1>Header 1</h1>  \n <br>\n<br><br><h2>Header 2</h2><br><br><br>',
+            'Header 1\n\n\n\nHeader 2',
+        );
 
-        checkHtmlToText('<div><div>Div</div><p>Paragraph</p></div>', 'Div\nParagraph');
-        checkHtmlToText('<div>Div1</div><!-- Some comments --><div>Div2</div>', 'Div1\nDiv2');
+        checkHtmlToText(
+            '<div><div>Div</div><p>Paragraph</p></div>',
+            'Div\nParagraph',
+        );
+        checkHtmlToText(
+            '<div>Div1</div><!-- Some comments --><div>Div2</div>',
+            'Div1\nDiv2',
+        );
 
         checkHtmlToText('<div>Div1</div><style>Skip styles</style>', 'Div1');
-        checkHtmlToText('<script>Skip_scripts();</script><div>Div1</div>', 'Div1');
-        checkHtmlToText('<SCRIPT>Skip_scripts();</SCRIPT><div>Div1</div>', 'Div1');
+        checkHtmlToText(
+            '<script>Skip_scripts();</script><div>Div1</div>',
+            'Div1',
+        );
+        checkHtmlToText(
+            '<SCRIPT>Skip_scripts();</SCRIPT><div>Div1</div>',
+            'Div1',
+        );
         checkHtmlToText('<svg>Skip svg</svg><div>Div1</div>', 'Div1');
         checkHtmlToText('<canvas>Skip canvas</canvas><div>Div1</div>', 'Div1');
 
         checkHtmlToText('<b>A  B  C  D  E\n\nF  G</b>', 'A B C D E F G');
-        checkHtmlToText('<pre>A  B  C  D  E\n\nF  G</pre>', 'A  B  C  D  E\n\nF  G');
+        checkHtmlToText(
+            '<pre>A  B  C  D  E\n\nF  G</pre>',
+            'A  B  C  D  E\n\nF  G',
+        );
 
         checkHtmlToText(
             '<h1>Heading 1</h1><div><div><div><div>Deep  Div</div></div></div></div><h2>Heading       2</h2>',
             'Heading 1\nDeep Div\nHeading 2',
         );
 
-        checkHtmlToText('<a>this_word</a>_should_<b></b>be_<span>one</span>', 'this_word_should_be_one');
-        checkHtmlToText('<span attributes="should" be="ignored">some <span>text</span></span>', 'some text');
+        checkHtmlToText(
+            '<a>this_word</a>_should_<b></b>be_<span>one</span>',
+            'this_word_should_be_one',
+        );
+        checkHtmlToText(
+            '<span attributes="should" be="ignored">some <span>text</span></span>',
+            'some text',
+        );
 
         checkHtmlToText(
             `<table>
@@ -550,8 +639,14 @@ describe('utils.htmlToText()', () => {
     });
 
     test('handles larger HTML documents', () => {
-        const html1 = fs.readFileSync(path.join(__dirname, 'data', 'html_to_text_test.html'), 'utf8');
-        const text1 = fs.readFileSync(path.join(__dirname, 'data', 'html_to_text_test.txt'), 'utf8');
+        const html1 = fs.readFileSync(
+            path.join(__dirname, 'data', 'html_to_text_test.html'),
+            'utf8',
+        );
+        const text1 = fs.readFileSync(
+            path.join(__dirname, 'data', 'html_to_text_test.txt'),
+            'utf8',
+        );
 
         // Careful here - don't change any whitespace in the text below or the test will break, even trailing!
         checkHtmlToText(html1, text1, true);
@@ -559,10 +654,16 @@ describe('utils.htmlToText()', () => {
 
     test('works with Cheerio object', () => {
         const html1 = '<html><body>Some text</body></html>';
-        checkHtmlToText(cheerio.load(html1, { decodeEntities: true }), 'Some text');
+        checkHtmlToText(
+            cheerio.load(html1, { decodeEntities: true }),
+            'Some text',
+        );
 
         const html2 = '<h1>Text outside of body</h1>';
-        checkHtmlToText(cheerio.load(html2, { decodeEntities: true }), 'Text outside of body');
+        checkHtmlToText(
+            cheerio.load(html2, { decodeEntities: true }),
+            'Text outside of body',
+        );
     });
 });
 
@@ -588,7 +689,13 @@ describe('utils.createRequestDebugInfo()', () => {
             foo: 'bar',
         };
 
-        expect(Apify.utils.createRequestDebugInfo(request, response, additionalFields)).toEqual({
+        expect(
+            Apify.utils.createRequestDebugInfo(
+                request,
+                response,
+                additionalFields,
+            ),
+        ).toEqual({
             requestId: 'some-id',
             url: 'https://example.com',
             loadedUrl: 'https://example.com',
@@ -621,7 +728,13 @@ describe('utils.createRequestDebugInfo()', () => {
             foo: 'bar',
         };
 
-        expect(Apify.utils.createRequestDebugInfo(request, response, additionalFields)).toEqual({
+        expect(
+            Apify.utils.createRequestDebugInfo(
+                request,
+                response,
+                additionalFields,
+            ),
+        ).toEqual({
             requestId: 'some-id',
             url: 'https://example.com',
             loadedUrl: 'https://example.com',
@@ -637,10 +750,10 @@ describe('utils.createRequestDebugInfo()', () => {
 describe('utils.snakeCaseToCamelCase()', () => {
     test('should camel case all sneaky cases of snake case', () => {
         const tests = {
-            aaa_bbb_: 'aaaBbb',
+            'aaa_bbb_': 'aaaBbb',
             '': '',
-            AaA_bBb_cCc: 'aaaBbbCcc',
-            a_1_b_1a: 'a1B1a',
+            'AaA_bBb_cCc': 'aaaBbbCcc',
+            'a_1_b_1a': 'a1B1a',
         };
 
         _.mapObject(tests, (camelCase, snakeCase) => {
@@ -714,7 +827,10 @@ describe('utils.printOutdatedSdkWarning()', () => {
     });
 
     test('should correctly work when outdated', () => {
-        process.env[ENV_VARS.SDK_LATEST_VERSION] = semver.inc(currentVersion, 'minor');
+        process.env[ENV_VARS.SDK_LATEST_VERSION] = semver.inc(
+            currentVersion,
+            'minor',
+        );
         console.log(process.env[ENV_VARS.SDK_LATEST_VERSION]);
         logMock.expects('warning').once();
         utils.printOutdatedSdkWarning();
@@ -731,23 +847,35 @@ describe('utils.printOutdatedSdkWarning()', () => {
 
 describe('utils.parseContentTypeFromResponse', () => {
     test('should parse content type from header', () => {
-        const parsed = utils.parseContentTypeFromResponse({ url: 'http://example.com', headers: { 'content-type': 'text/html; charset=utf-8' } });
+        const parsed = utils.parseContentTypeFromResponse({
+            url: 'http://example.com',
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
         expect(parsed.type).toBe('text/html');
         expect(parsed.charset).toBe('utf-8');
     });
 
     test('should parse content type from file extension', () => {
-        const parsedHtml = utils.parseContentTypeFromResponse({ url: 'http://www.example.com/foo/file.html?someparam=foo', headers: {} });
+        const parsedHtml = utils.parseContentTypeFromResponse({
+            url: 'http://www.example.com/foo/file.html?someparam=foo',
+            headers: {},
+        });
         expect(parsedHtml.type).toBe('text/html');
         expect(parsedHtml.charset).toBe('utf-8');
 
-        const parsedTxt = utils.parseContentTypeFromResponse({ url: 'http://www.example.com/foo/file.txt', headers: {} });
+        const parsedTxt = utils.parseContentTypeFromResponse({
+            url: 'http://www.example.com/foo/file.txt',
+            headers: {},
+        });
         expect(parsedTxt.type).toBe('text/plain');
         expect(parsedTxt.charset).toBe('utf-8');
     });
 
     test('should return default content type for bad content type headers', () => {
-        const parsedWithoutCt = utils.parseContentTypeFromResponse({ url: 'http://www.example.com/foo/file', headers: {} });
+        const parsedWithoutCt = utils.parseContentTypeFromResponse({
+            url: 'http://www.example.com/foo/file',
+            headers: {},
+        });
         expect(parsedWithoutCt.type).toBe('application/octet-stream');
         expect(parsedWithoutCt.charset).toBe('utf-8');
 
@@ -758,7 +886,10 @@ describe('utils.parseContentTypeFromResponse', () => {
         expect(parsedBadHeader.type).toBe('text/html');
         expect(parsedBadHeader.charset).toBe('utf-8');
 
-        const parsedReallyBad = utils.parseContentTypeFromResponse({ url: 'http://www.example.com/foo', headers: { 'content-type': 'crazy-stuff' } });
+        const parsedReallyBad = utils.parseContentTypeFromResponse({
+            url: 'http://www.example.com/foo',
+            headers: { 'content-type': 'crazy-stuff' },
+        });
         expect(parsedReallyBad.type).toBe('application/octet-stream');
         expect(parsedReallyBad.charset).toBe('utf-8');
     });

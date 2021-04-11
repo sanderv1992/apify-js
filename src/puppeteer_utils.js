@@ -16,7 +16,7 @@ import { openKeyValueStore } from './storages/key_value_store';
 import * as _ from './underscore';
 
 const jqueryPath = require.resolve('jquery');
-const underscorePath = require.resolve('underscore');
+const underscorePath = require.resolve('./underscore/index.js');
 const readFilePromised = util.promisify(fs.readFile);
 
 const MAX_INJECT_FILE_CACHE_SIZE = 10;

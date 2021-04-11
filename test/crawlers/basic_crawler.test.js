@@ -1,4 +1,4 @@
-import _ from 'underscore';
+import * as _ from '../src/underscore';
 import sinon from 'sinon';
 import { ACTOR_EVENT_NAMES } from 'apify-shared/consts';
 import log from '../../build/utils_log';
@@ -30,7 +30,9 @@ describe('BasicCrawler', () => {
     });
 
     test('should run in parallel thru all the requests', async () => {
-        const sources = _.range(0, 500).map((index) => ({ url: `https://example.com/${index}` }));
+        const sources = _.range(0, 500).map((index) => ({
+            url: `https://example.com/${index}`,
+        }));
         const sourcesCopy = JSON.parse(JSON.stringify(sources));
 
         const processed = [];
@@ -56,55 +58,63 @@ describe('BasicCrawler', () => {
         expect(await requestList.isEmpty()).toBe(true);
     });
 
-    test(
-        'should pause on migration event and persist RequestList state',
-        async () => {
-            const sources = _.range(500).map((index) => ({ url: `https://example.com/${index + 1}` }));
+    test('should pause on migration event and persist RequestList state', async () => {
+        const sources = _.range(500).map((index) => ({
+            url: `https://example.com/${index + 1}`,
+        }));
 
-            let persistResolve;
-            const persistPromise = new Promise((res) => { persistResolve = res; });
+        let persistResolve;
+        const persistPromise = new Promise((res) => {
+            persistResolve = res;
+        });
 
-            // Mock the calls to persist sources.
-            const mock = sinon.mock(keyValueStore);
-            mock.expects('getValue').twice().resolves(null);
-            mock.expects('setValue').once().resolves();
+        // Mock the calls to persist sources.
+        const mock = sinon.mock(keyValueStore);
+        mock.expects('getValue').twice().resolves(null);
+        mock.expects('setValue').once().resolves();
 
-            const processed = [];
-            const requestList = await Apify.openRequestList('reqList', sources);
-            const handleRequestFunction = async ({ request }) => {
-                if (request.url.endsWith('200')) Apify.events.emit(ACTOR_EVENT_NAMES.MIGRATING);
-                processed.push(_.pick(request, 'url'));
-            };
+        const processed = [];
+        const requestList = await Apify.openRequestList('reqList', sources);
+        const handleRequestFunction = async ({ request }) => {
+            if (request.url.endsWith('200'))
+                Apify.events.emit(ACTOR_EVENT_NAMES.MIGRATING);
+            processed.push(_.pick(request, 'url'));
+        };
 
-            const basicCrawler = new Apify.BasicCrawler({
-                requestList,
-                minConcurrency: 25,
-                maxConcurrency: 25,
-                handleRequestFunction,
+        const basicCrawler = new Apify.BasicCrawler({
+            requestList,
+            minConcurrency: 25,
+            maxConcurrency: 25,
+            handleRequestFunction,
+        });
+
+        let finished = false;
+        // Mock the call to persist state.
+        mock.expects('setValue')
+            .once()
+            .callsFake(async () => {
+                persistResolve();
             });
+        // The crawler will pause after 200 requests
+        const runPromise = basicCrawler.run();
+        runPromise.then(() => {
+            finished = true;
+        });
 
-            let finished = false;
-            // Mock the call to persist state.
-            mock.expects('setValue').once().callsFake(async () => { persistResolve(); });
-            // The crawler will pause after 200 requests
-            const runPromise = basicCrawler.run();
-            runPromise.then(() => { finished = true; });
+        // need to monkeypatch the stats class, otherwise it will never finish
+        basicCrawler.stats.persistState = () => Promise.resolve();
+        await persistPromise;
 
-            // need to monkeypatch the stats class, otherwise it will never finish
-            basicCrawler.stats.persistState = () => Promise.resolve();
-            await persistPromise;
+        expect(finished).toBe(false);
+        expect(await requestList.isFinished()).toBe(false);
+        expect(await requestList.isEmpty()).toBe(false);
+        expect(processed.length).toBe(200);
 
-            expect(finished).toBe(false);
-            expect(await requestList.isFinished()).toBe(false);
-            expect(await requestList.isEmpty()).toBe(false);
-            expect(processed.length).toBe(200);
+        mock.verify();
 
-            mock.verify();
-
-            // clean up
-            await basicCrawler.autoscaledPool._destroy(); // eslint-disable-line no-underscore-dangle
-        },
-    );
+        // clean up
+        await basicCrawler.autoscaledPool._destroy(); // eslint-disable-line no-underscore-dangle
+    });
 
     test('should retry failed requests', async () => {
         const sources = [
@@ -145,7 +155,9 @@ describe('BasicCrawler', () => {
         expect(processed['http://example.com/3'].retryCount).toBe(0);
 
         expect(processed['http://example.com/2'].userData.foo).toBeUndefined();
-        expect(processed['http://example.com/2'].errorMessages).toHaveLength(11);
+        expect(processed['http://example.com/2'].errorMessages).toHaveLength(
+            11,
+        );
         expect(processed['http://example.com/2'].retryCount).toBe(10);
 
         expect(await requestList.isFinished()).toBe(true);
@@ -153,7 +165,9 @@ describe('BasicCrawler', () => {
     });
 
     test('should not retry requests with noRetry set to true ', async () => {
-        const noRetryRequest = new Apify.Request({ url: 'http://example.com/3' });
+        const noRetryRequest = new Apify.Request({
+            url: 'http://example.com/3',
+        });
         noRetryRequest.noRetry = true;
 
         const sources = [
@@ -196,7 +210,9 @@ describe('BasicCrawler', () => {
         expect(processed['http://example.com/3'].retryCount).toBe(0);
 
         expect(processed['http://example.com/2'].userData.foo).toBe('bar');
-        expect(processed['http://example.com/2'].errorMessages).toHaveLength(11);
+        expect(processed['http://example.com/2'].errorMessages).toHaveLength(
+            11,
+        );
         expect(processed['http://example.com/2'].retryCount).toBe(10);
 
         expect(handleFailedRequestFunctionCalls).toBe(3);
@@ -250,13 +266,31 @@ describe('BasicCrawler', () => {
 
     test('should require at least one of RequestQueue and RequestList', () => {
         const requestList = new Apify.RequestList({ sources: [] });
-        const requestQueue = new RequestQueue({ id: 'xxx', client: utils.apifyClient });
+        const requestQueue = new RequestQueue({
+            id: 'xxx',
+            client: utils.apifyClient,
+        });
         const handleRequestFunction = () => {};
 
-        expect(() => new Apify.BasicCrawler({ handleRequestFunction })).toThrowError();
-        expect(() => new Apify.BasicCrawler({ handleRequestFunction, requestList })).not.toThrowError();
-        expect(() => new Apify.BasicCrawler({ handleRequestFunction, requestQueue })).not.toThrowError();
-        expect(() => new Apify.BasicCrawler({ handleRequestFunction, requestQueue, requestList })).not.toThrowError();
+        expect(
+            () => new Apify.BasicCrawler({ handleRequestFunction }),
+        ).toThrowError();
+        expect(
+            () =>
+                new Apify.BasicCrawler({ handleRequestFunction, requestList }),
+        ).not.toThrowError();
+        expect(
+            () =>
+                new Apify.BasicCrawler({ handleRequestFunction, requestQueue }),
+        ).not.toThrowError();
+        expect(
+            () =>
+                new Apify.BasicCrawler({
+                    handleRequestFunction,
+                    requestQueue,
+                    requestList,
+                }),
+        ).not.toThrowError();
     });
 
     test('should correctly combine RequestList and RequestQueue', async () => {
@@ -267,7 +301,10 @@ describe('BasicCrawler', () => {
         ];
         const processed = {};
         const requestList = new Apify.RequestList({ sources });
-        const requestQueue = new RequestQueue({ id: 'xxx', client: utils.apifyClient });
+        const requestQueue = new RequestQueue({
+            id: 'xxx',
+            client: utils.apifyClient,
+        });
 
         const handleRequestFunction = async ({ request }) => {
             await utils.sleep(10);
@@ -291,9 +328,7 @@ describe('BasicCrawler', () => {
 
         // It enqueues all requests from RequestList to RequestQueue.
         const mock = sinon.mock(requestQueue);
-        mock.expects('handledCount')
-            .once()
-            .returns(Promise.resolve(0));
+        mock.expects('handledCount').once().returns(Promise.resolve(0));
         mock.expects('addRequest')
             .once()
             .withArgs(new Apify.Request(sources[0]), { forefront: true })
@@ -312,9 +347,15 @@ describe('BasicCrawler', () => {
         const request2 = new Apify.Request({ id: 'id-2', ...sources[2] });
 
         // 1st try
-        mock.expects('fetchNextRequest').once().returns(Promise.resolve(request0));
-        mock.expects('fetchNextRequest').once().returns(Promise.resolve(request1));
-        mock.expects('fetchNextRequest').once().returns(Promise.resolve(request2));
+        mock.expects('fetchNextRequest')
+            .once()
+            .returns(Promise.resolve(request0));
+        mock.expects('fetchNextRequest')
+            .once()
+            .returns(Promise.resolve(request1));
+        mock.expects('fetchNextRequest')
+            .once()
+            .returns(Promise.resolve(request2));
         mock.expects('markRequestHandled')
             .once()
             .withArgs(request0)
@@ -355,15 +396,9 @@ describe('BasicCrawler', () => {
             .withArgs(request1)
             .returns(Promise.resolve());
 
-        mock.expects('isEmpty')
-            .exactly(3)
-            .returns(Promise.resolve(false));
-        mock.expects('isEmpty')
-            .once()
-            .returns(Promise.resolve(true));
-        mock.expects('isFinished')
-            .once()
-            .returns(Promise.resolve(true));
+        mock.expects('isEmpty').exactly(3).returns(Promise.resolve(false));
+        mock.expects('isEmpty').once().returns(Promise.resolve(true));
+        mock.expects('isFinished').once().returns(Promise.resolve(true));
 
         await requestList.initialize();
         await basicCrawler.run();
@@ -385,70 +420,78 @@ describe('BasicCrawler', () => {
         mock.verify();
     });
 
-    test(
-        'should say that task is not ready requestList is not set and requestQueue is empty',
-        async () => {
-            const requestQueue = new RequestQueue({ id: 'xxx', client: utils.apifyClient });
-            requestQueue.isEmpty = () => Promise.resolve(true);
+    test('should say that task is not ready requestList is not set and requestQueue is empty', async () => {
+        const requestQueue = new RequestQueue({
+            id: 'xxx',
+            client: utils.apifyClient,
+        });
+        requestQueue.isEmpty = () => Promise.resolve(true);
 
-            const crawler = new Apify.BasicCrawler({
-                requestQueue,
-                handleRequestFunction: () => {},
-            });
+        const crawler = new Apify.BasicCrawler({
+            requestQueue,
+            handleRequestFunction: () => {},
+        });
 
-            expect(await crawler._isTaskReadyFunction()).toBe(false); // eslint-disable-line no-underscore-dangle
-        },
-    );
+        expect(await crawler._isTaskReadyFunction()).toBe(false); // eslint-disable-line no-underscore-dangle
+    });
 
-    test(
-        'should be possible to override isFinishedFunction of underlying AutoscaledPool',
-        async () => {
-            const requestQueue = new RequestQueue({ id: 'xxx', client: utils.apifyClient });
-            const processed = [];
-            const queue = [];
-            let isFinished = false;
+    test('should be possible to override isFinishedFunction of underlying AutoscaledPool', async () => {
+        const requestQueue = new RequestQueue({
+            id: 'xxx',
+            client: utils.apifyClient,
+        });
+        const processed = [];
+        const queue = [];
+        let isFinished = false;
 
-            const basicCrawler = new Apify.BasicCrawler({
-                requestQueue,
-                autoscaledPoolOptions: {
-                    minConcurrency: 1,
-                    maxConcurrency: 1,
-                    isFinishedFunction: () => {
-                        return Promise.resolve(isFinished);
-                    },
+        const basicCrawler = new Apify.BasicCrawler({
+            requestQueue,
+            autoscaledPoolOptions: {
+                minConcurrency: 1,
+                maxConcurrency: 1,
+                isFinishedFunction: () => {
+                    return Promise.resolve(isFinished);
                 },
-                handleRequestFunction: async ({ request }) => {
-                    await utils.sleep(10);
-                    processed.push(request);
-                },
-            });
+            },
+            handleRequestFunction: async ({ request }) => {
+                await utils.sleep(10);
+                processed.push(request);
+            },
+        });
 
-            // Speed up the test
-            basicCrawler.autoscaledPoolOptions.maybeRunIntervalSecs = 0.05;
+        // Speed up the test
+        basicCrawler.autoscaledPoolOptions.maybeRunIntervalSecs = 0.05;
 
-            const request0 = new Apify.Request({ url: 'http://example.com/0' });
-            const request1 = new Apify.Request({ url: 'http://example.com/1' });
+        const request0 = new Apify.Request({ url: 'http://example.com/0' });
+        const request1 = new Apify.Request({ url: 'http://example.com/1' });
 
-            const mock = sinon.mock(requestQueue);
-            mock.expects('handledCount').once().returns(Promise.resolve());
-            mock.expects('markRequestHandled').once().withArgs(request0).returns(Promise.resolve());
-            mock.expects('markRequestHandled').once().withArgs(request1).returns(Promise.resolve());
-            mock.expects('isFinished').never();
-            requestQueue.fetchNextRequest = () => Promise.resolve(queue.pop());
-            requestQueue.isEmpty = () => Promise.resolve(!queue.length);
+        const mock = sinon.mock(requestQueue);
+        mock.expects('handledCount').once().returns(Promise.resolve());
+        mock.expects('markRequestHandled')
+            .once()
+            .withArgs(request0)
+            .returns(Promise.resolve());
+        mock.expects('markRequestHandled')
+            .once()
+            .withArgs(request1)
+            .returns(Promise.resolve());
+        mock.expects('isFinished').never();
+        requestQueue.fetchNextRequest = () => Promise.resolve(queue.pop());
+        requestQueue.isEmpty = () => Promise.resolve(!queue.length);
 
-            setTimeout(() => queue.push(request0), 10);
-            setTimeout(() => queue.push(request1), 100);
-            setTimeout(() => { isFinished = true; }, 150);
+        setTimeout(() => queue.push(request0), 10);
+        setTimeout(() => queue.push(request1), 100);
+        setTimeout(() => {
+            isFinished = true;
+        }, 150);
 
-            await basicCrawler.run();
+        await basicCrawler.run();
 
-            expect(processed.includes(request0, request1)).toBe(true);
+        expect(processed.includes(request0, request1)).toBe(true);
 
-            mock.verify();
-            sinon.restore();
-        },
-    );
+        mock.verify();
+        sinon.restore();
+    });
 
     test('should support maxRequestsPerCrawl parameter', async () => {
         const sources = [
@@ -492,7 +535,9 @@ describe('BasicCrawler', () => {
         expect(processed['http://example.com/3'].errorMessages).toEqual([]);
         expect(processed['http://example.com/3'].retryCount).toBe(0);
 
-        expect(processed['http://example.com/2'].userData.foo).toEqual(undefined);
+        expect(processed['http://example.com/2'].userData.foo).toEqual(
+            undefined,
+        );
         expect(processed['http://example.com/2'].errorMessages).toHaveLength(4);
         expect(processed['http://example.com/2'].retryCount).toBe(3);
 
@@ -503,14 +548,16 @@ describe('BasicCrawler', () => {
     });
 
     test('should load handledRequestCount from storages', async () => {
-        const requestQueue = new RequestQueue({ id: 'id', client: utils.apifyClient });
+        const requestQueue = new RequestQueue({
+            id: 'id',
+            client: utils.apifyClient,
+        });
         requestQueue.isEmpty = async () => false;
         requestQueue.isFinished = async () => false;
-        requestQueue.fetchNextRequest = async () => (new Apify.Request({ id: 'id', url: 'http://example.com' }));
+        requestQueue.fetchNextRequest = async () =>
+            new Apify.Request({ id: 'id', url: 'http://example.com' });
         requestQueue.markRequestHandled = async () => {};
-        let stub = sinon
-            .stub(requestQueue, 'handledCount')
-            .returns(33);
+        let stub = sinon.stub(requestQueue, 'handledCount').returns(33);
 
         let count = 0;
         let crawler = new Apify.BasicCrawler({
@@ -528,13 +575,13 @@ describe('BasicCrawler', () => {
         expect(count).toBe(7);
         sinon.restore();
 
-        const sources = _.range(1, 10).map((i) => ({ url: `http://example.com/${i}` }));
+        const sources = _.range(1, 10).map((i) => ({
+            url: `http://example.com/${i}`,
+        }));
         const sourcesCopy = JSON.parse(JSON.stringify(sources));
         let requestList = new Apify.RequestList({ sources });
         await requestList.initialize();
-        stub = sinon
-            .stub(requestList, 'handledCount')
-            .returns(33);
+        stub = sinon.stub(requestList, 'handledCount').returns(33);
 
         count = 0;
         crawler = new Apify.BasicCrawler({
@@ -554,13 +601,9 @@ describe('BasicCrawler', () => {
 
         requestList = new Apify.RequestList({ sources: sourcesCopy });
         await requestList.initialize();
-        const listStub = sinon
-            .stub(requestList, 'handledCount')
-            .returns(20);
+        const listStub = sinon.stub(requestList, 'handledCount').returns(20);
 
-        const queueStub = sinon
-            .stub(requestQueue, 'handledCount')
-            .returns(33);
+        const queueStub = sinon.stub(requestQueue, 'handledCount').returns(33);
 
         const addRequestStub = sinon
             .stub(requestQueue, 'addRequest')
@@ -603,7 +646,9 @@ describe('BasicCrawler', () => {
         await crawler.run();
         expect(results).toHaveLength(1);
         expect(results[0].url).toEqual(url);
-        results[0].errorMessages.forEach((msg) => expect(msg).toMatch('handleRequestFunction timed out'));
+        results[0].errorMessages.forEach((msg) =>
+            expect(msg).toMatch('handleRequestFunction timed out'),
+        );
     });
 
     describe('Uses SessionPool', () => {
@@ -626,7 +671,8 @@ describe('BasicCrawler', () => {
                     expect(session.constructor.name).toEqual('Session');
                     expect(session.id).toBeDefined();
                 },
-                handleFailedRequestFunction: ({ request }) => results.push(request),
+                handleFailedRequestFunction: ({ request }) =>
+                    results.push(request),
             });
 
             await crawler.run();
@@ -674,13 +720,18 @@ describe('BasicCrawler', () => {
                 handleFailedRequestFunction: () => {},
             });
 
-            crawler._loadHandledRequestCount = () => { // eslint-disable-line
+            crawler._loadHandledRequestCount = () => {
+                // eslint-disable-line
                 expect(crawler.sessionPool).toBeDefined();
-                expect(events.listenerCount(ACTOR_EVENT_NAMES.PERSIST_STATE)).toEqual(1);
+                expect(
+                    events.listenerCount(ACTOR_EVENT_NAMES.PERSIST_STATE),
+                ).toEqual(1);
             };
 
             await crawler.run();
-            expect(events.listenerCount(ACTOR_EVENT_NAMES.PERSIST_STATE)).toEqual(0);
+            expect(
+                events.listenerCount(ACTOR_EVENT_NAMES.PERSIST_STATE),
+            ).toEqual(0);
             expect(crawler.sessionPool.maxPoolSize).toEqual(10);
         });
     });
@@ -705,8 +756,12 @@ describe('BasicCrawler', () => {
                 requestList,
                 minConcurrency: 4,
                 async handleRequestFunction(crawlingContext) {
-                    mainContexts[counter] = crawler.crawlingContexts.get(crawlingContext.id);
-                    otherContexts[counter] = Array.from(crawler.crawlingContexts).map(([, v]) => v);
+                    mainContexts[counter] = crawler.crawlingContexts.get(
+                        crawlingContext.id,
+                    );
+                    otherContexts[counter] = Array.from(
+                        crawler.crawlingContexts,
+                    ).map(([, v]) => v);
                     counter++;
                     if (counter === 4) finish();
                     await allFinishedPromise;

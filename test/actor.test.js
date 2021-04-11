@@ -1,5 +1,5 @@
 import path from 'path';
-import _ from 'underscore';
+import * as _ from '../src/underscore';
 import sinon from 'sinon';
 import { ENV_VARS, ACT_JOB_STATUSES } from 'apify-shared/consts';
 import { ApifyCallError } from '../build/errors';
@@ -8,7 +8,9 @@ import * as utils from '../build/utils';
 // NOTE: test use of require() here because this is how its done in acts
 const Apify = require('../build/index');
 
-const { utils: { log } } = Apify;
+const {
+    utils: { log },
+} = Apify;
 
 // TODO: override console.log() to test the error messages (now they are printed to console)
 
@@ -58,10 +60,9 @@ const testMain = async ({ userFunc, exitCode }) => {
                         // Call user func to test other behavior (note that it can throw)
                         if (userFunc) return userFunc();
                     });
-                })
-                    .catch((err) => {
-                        error = err;
-                    });
+                }).catch((err) => {
+                    error = err;
+                });
             })
             .then(() => {
                 // Waits max 1000 millis for process.exit() mock to be called
@@ -70,7 +71,8 @@ const testMain = async ({ userFunc, exitCode }) => {
                     const waitUntil = Date.now() + 1000;
                     const intervalId = setInterval(() => {
                         // console.log('test for exitExpectation.called');
-                        if (!exitExpectation.called && Date.now() < waitUntil) return;
+                        if (!exitExpectation.called && Date.now() < waitUntil)
+                            return;
                         clearInterval(intervalId);
                         // console.log(`exitExpectation.called: ${exitExpectation.called}`);
                         resolve();
@@ -115,11 +117,17 @@ const setEnv = (env) => {
     if (env.actRunId) process.env.APIFY_ACT_RUN_ID = env.actRunId;
     if (env.userId) process.env.APIFY_USER_ID = env.userId;
     if (env.token) process.env.APIFY_TOKEN = env.token;
-    if (env.startedAt) process.env.APIFY_STARTED_AT = env.startedAt.toISOString();
-    if (env.timeoutAt) process.env.APIFY_TIMEOUT_AT = env.timeoutAt.toISOString();
-    if (env.defaultKeyValueStoreId) process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID = env.defaultKeyValueStoreId;
-    if (env.defaultDatasetId) process.env.APIFY_DEFAULT_DATASET_ID = env.defaultDatasetId;
-    if (env.memoryMbytes) process.env.APIFY_MEMORY_MBYTES = env.memoryMbytes.toString();
+    if (env.startedAt)
+        process.env.APIFY_STARTED_AT = env.startedAt.toISOString();
+    if (env.timeoutAt)
+        process.env.APIFY_TIMEOUT_AT = env.timeoutAt.toISOString();
+    if (env.defaultKeyValueStoreId)
+        process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID =
+            env.defaultKeyValueStoreId;
+    if (env.defaultDatasetId)
+        process.env.APIFY_DEFAULT_DATASET_ID = env.defaultDatasetId;
+    if (env.memoryMbytes)
+        process.env.APIFY_MEMORY_MBYTES = env.memoryMbytes.toString();
 };
 
 describe('Apify.getEnv()', () => {
@@ -181,7 +189,9 @@ describe('Apify.main()', () => {
 
         await testMain({
             userFunc: () => {
-                expect(process.env[ENV_VARS.LOCAL_STORAGE_DIR]).toEqual(path.join(process.cwd(), './apify_storage'));
+                expect(process.env[ENV_VARS.LOCAL_STORAGE_DIR]).toEqual(
+                    path.join(process.cwd(), './apify_storage'),
+                );
             },
             exitCode: 0,
         });
@@ -202,36 +212,29 @@ describe('Apify.main()', () => {
                 });
             },
             exitCode: 0,
-        })
-            .then(() => {
-                expect(called).toBe(true);
-            });
+        }).then(() => {
+            expect(called).toBe(true);
+        });
     });
 
-    test(
-        'on exception in simple user function the process exits with code 91',
-        () => {
-            return testMain({
-                userFunc: () => {
-                    throw new Error('Test exception I');
-                },
-                exitCode: 91,
-            });
-        },
-    );
+    test('on exception in simple user function the process exits with code 91', () => {
+        return testMain({
+            userFunc: () => {
+                throw new Error('Test exception I');
+            },
+            exitCode: 91,
+        });
+    });
 
-    test(
-        'on exception in promised user function the process exits with code 91',
-        () => {
-            return testMain({
-                userFunc: async () => {
-                    await utils.sleep(20);
-                    throw new Error('Test exception II');
-                },
-                exitCode: 91,
-            });
-        },
-    );
+    test('on exception in promised user function the process exits with code 91', () => {
+        return testMain({
+            userFunc: async () => {
+                await utils.sleep(20);
+                throw new Error('Test exception II');
+            },
+            exitCode: 91,
+        });
+    });
 });
 
 describe('Apify.call()', () => {
@@ -251,7 +254,10 @@ describe('Apify.call()', () => {
     const readyRun = { ...run, status: ACT_JOB_STATUSES.READY };
 
     const output = { contentType, key: outputKey, value: outputValue };
-    const expected = { ...finishedRun, output: { contentType, body: outputValue } };
+    const expected = {
+        ...finishedRun,
+        output: { contentType, body: outputValue },
+    };
 
     test('works as expected', async () => {
         const memoryMbytes = 1024;
@@ -259,18 +265,26 @@ describe('Apify.call()', () => {
         const webhooks = [{ a: 'a' }, { b: 'b' }];
 
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('actor')
+        clientMock
+            .expects('actor')
             .once()
             .withArgs('some-act-id')
             .returns({ call: async () => finishedRun });
 
-        clientMock.expects('keyValueStore')
+        clientMock
+            .expects('keyValueStore')
             .once()
             .withArgs('some-store-id')
             .returns({ getRecord: async () => output });
 
-        const callOutput = await Apify
-            .call(actId, input, { contentType, disableBodyParser: true, build, memoryMbytes, timeoutSecs, webhooks });
+        const callOutput = await Apify.call(actId, input, {
+            contentType,
+            disableBodyParser: true,
+            build,
+            memoryMbytes,
+            timeoutSecs,
+            webhooks,
+        });
 
         expect(callOutput).toEqual(expected);
         clientMock.verify();
@@ -278,16 +292,18 @@ describe('Apify.call()', () => {
 
     test('works as expected with fetchOutput = false', async () => {
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('actor')
+        clientMock
+            .expects('actor')
             .once()
             .withArgs('some-act-id')
             .returns({ call: async () => finishedRun });
 
-        clientMock.expects('keyValueStore')
-            .never();
+        clientMock.expects('keyValueStore').never();
 
-        const callOutput = await Apify
-            .call(actId, undefined, { disableBodyParser: true, fetchOutput: false });
+        const callOutput = await Apify.call(actId, undefined, {
+            disableBodyParser: true,
+            fetchOutput: false,
+        });
 
         expect(callOutput).toEqual(finishedRun);
         clientMock.restore();
@@ -301,27 +317,36 @@ describe('Apify.call()', () => {
         const utilsMock = sinon.mock(utils);
         const callStub = sinon.stub().resolves(finishedRun);
         const getRecordStub = sinon.stub().resolves(output);
-        const keyValueStoreStub = sinon.stub().returns({ getRecord: getRecordStub });
+        const keyValueStoreStub = sinon
+            .stub()
+            .returns({ getRecord: getRecordStub });
         const actorStub = sinon.stub().returns({ call: callStub });
-        utilsMock.expects('newClient')
-            .once()
-            .withArgs({ token })
-            .returns({
-                actor: actorStub,
-                keyValueStore: keyValueStoreStub,
-            });
-        const callOutput = await Apify
-            .call(actId, input, { contentType, token, disableBodyParser: true, build, memoryMbytes, timeoutSecs, webhooks });
+        utilsMock.expects('newClient').once().withArgs({ token }).returns({
+            actor: actorStub,
+            keyValueStore: keyValueStoreStub,
+        });
+        const callOutput = await Apify.call(actId, input, {
+            contentType,
+            token,
+            disableBodyParser: true,
+            build,
+            memoryMbytes,
+            timeoutSecs,
+            webhooks,
+        });
 
         expect(callOutput).toEqual(expected);
         expect(actorStub.calledOnceWith(actId));
-        expect(callStub.args[0]).toEqual([input, {
-            build,
-            contentType: `${contentType}; charset=utf-8`,
-            memory: memoryMbytes,
-            timeout: timeoutSecs,
-            webhooks,
-        }]);
+        expect(callStub.args[0]).toEqual([
+            input,
+            {
+                build,
+                contentType: `${contentType}; charset=utf-8`,
+                memory: memoryMbytes,
+                timeout: timeoutSecs,
+                webhooks,
+            },
+        ]);
         expect(keyValueStoreStub.calledOnceWith(run.defaultKeyValueStoreId));
         expect(getRecordStub.calledOnceWith('OUTPUT', { buffer: true }));
         utilsMock.verify();
@@ -331,16 +356,19 @@ describe('Apify.call()', () => {
         const waitSecs = 1;
 
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('actor')
+        clientMock
+            .expects('actor')
             .once()
             .withArgs('some-act-id')
             .returns({ call: async () => runningRun });
 
-        clientMock.expects('keyValueStore')
-            .never();
+        clientMock.expects('keyValueStore').never();
 
-        const callOutput = await Apify
-            .call(actId, undefined, { disableBodyParser: true, fetchOutput: false, waitSecs });
+        const callOutput = await Apify.call(actId, undefined, {
+            disableBodyParser: true,
+            fetchOutput: false,
+            waitSecs,
+        });
 
         expect(callOutput).toEqual(runningRun);
         clientMock.verify();
@@ -350,24 +378,24 @@ describe('Apify.call()', () => {
         const waitSecs = 0;
 
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('actor')
+        clientMock
+            .expects('actor')
             .once()
             .withArgs('some-act-id')
             .returns({ call: async () => readyRun });
 
-        clientMock.expects('keyValueStore')
-            .never();
+        clientMock.expects('keyValueStore').never();
 
-        const callOutput = await Apify
-            .call(actId, undefined, { waitSecs });
+        const callOutput = await Apify.call(actId, undefined, { waitSecs });
 
         expect(callOutput).toEqual(readyRun);
         clientMock.restore();
     });
 
-    test('throws if run doesn\'t succeed', async () => {
+    test("throws if run doesn't succeed", async () => {
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('actor')
+        clientMock
+            .expects('actor')
             .once()
             .withArgs('some-act-id')
             .returns({ call: async () => failedRun });
@@ -398,7 +426,10 @@ describe('Apify.callTask()', () => {
     const outputKey = 'OUTPUT';
     const outputValue = 'some-output';
     const output = { contentType, key: outputKey, value: outputValue };
-    const expected = { ...finishedRun, output: { contentType, body: outputValue } };
+    const expected = {
+        ...finishedRun,
+        output: { contentType, body: outputValue },
+    };
     const input = { foo: 'bar' };
     const memoryMbytes = 256;
     const timeoutSecs = 60;
@@ -407,18 +438,25 @@ describe('Apify.callTask()', () => {
 
     test('works as expected', async () => {
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('task')
+        clientMock
+            .expects('task')
             .once()
             .withArgs('some-task-id')
             .returns({ call: async () => finishedRun });
 
-        clientMock.expects('keyValueStore')
+        clientMock
+            .expects('keyValueStore')
             .once()
             .withArgs('some-store-id')
             .returns({ getRecord: async () => output });
 
-        const callOutput = await Apify
-            .callTask(taskId, input, { disableBodyParser: true, memoryMbytes, timeoutSecs, build, webhooks });
+        const callOutput = await Apify.callTask(taskId, input, {
+            disableBodyParser: true,
+            memoryMbytes,
+            timeoutSecs,
+            build,
+            webhooks,
+        });
 
         expect(callOutput).toEqual(expected);
         clientMock.restore();
@@ -428,26 +466,34 @@ describe('Apify.callTask()', () => {
         const utilsMock = sinon.mock(utils);
         const callStub = sinon.stub().resolves(finishedRun);
         const getRecordStub = sinon.stub().resolves(output);
-        const keyValueStoreStub = sinon.stub().returns({ getRecord: getRecordStub });
+        const keyValueStoreStub = sinon
+            .stub()
+            .returns({ getRecord: getRecordStub });
         const taskStub = sinon.stub().returns({ call: callStub });
-        utilsMock.expects('newClient')
-            .once()
-            .withArgs({ token })
-            .returns({
-                task: taskStub,
-                keyValueStore: keyValueStoreStub,
-            });
-        const callOutput = await Apify
-            .callTask(taskId, input, { token, disableBodyParser: true, build, memoryMbytes, timeoutSecs, webhooks });
+        utilsMock.expects('newClient').once().withArgs({ token }).returns({
+            task: taskStub,
+            keyValueStore: keyValueStoreStub,
+        });
+        const callOutput = await Apify.callTask(taskId, input, {
+            token,
+            disableBodyParser: true,
+            build,
+            memoryMbytes,
+            timeoutSecs,
+            webhooks,
+        });
 
         expect(callOutput).toEqual(expected);
         expect(taskStub.calledOnceWith(taskId));
-        expect(callStub.args[0]).toEqual([input, {
-            build,
-            memory: memoryMbytes,
-            timeout: timeoutSecs,
-            webhooks,
-        }]);
+        expect(callStub.args[0]).toEqual([
+            input,
+            {
+                build,
+                memory: memoryMbytes,
+                timeout: timeoutSecs,
+                webhooks,
+            },
+        ]);
         expect(keyValueStoreStub.calledOnceWith(run.defaultKeyValueStoreId));
         expect(getRecordStub.calledOnceWith('OUTPUT', { buffer: true }));
         utilsMock.verify();
@@ -455,16 +501,18 @@ describe('Apify.callTask()', () => {
 
     test('works as expected with fetchOutput = false', async () => {
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('task')
+        clientMock
+            .expects('task')
             .once()
             .withArgs('some-task-id')
             .returns({ call: async () => finishedRun });
 
-        clientMock.expects('keyValueStore')
-            .never();
+        clientMock.expects('keyValueStore').never();
 
-        const callOutput = await Apify
-            .callTask(taskId, undefined, { disableBodyParser: true, fetchOutput: false });
+        const callOutput = await Apify.callTask(taskId, undefined, {
+            disableBodyParser: true,
+            fetchOutput: false,
+        });
 
         expect(callOutput).toEqual(finishedRun);
         clientMock.restore();
@@ -474,16 +522,19 @@ describe('Apify.callTask()', () => {
         const waitSecs = 1;
 
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('task')
+        clientMock
+            .expects('task')
             .once()
             .withArgs('some-task-id')
             .returns({ call: async () => runningRun });
 
-        clientMock.expects('keyValueStore')
-            .never();
+        clientMock.expects('keyValueStore').never();
 
-        const callOutput = await Apify
-            .callTask(taskId, undefined, { disableBodyParser: true, fetchOutput: false, waitSecs });
+        const callOutput = await Apify.callTask(taskId, undefined, {
+            disableBodyParser: true,
+            fetchOutput: false,
+            waitSecs,
+        });
 
         expect(callOutput).toEqual(runningRun);
         clientMock.verify();
@@ -493,24 +544,26 @@ describe('Apify.callTask()', () => {
         const waitSecs = 0;
 
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('task')
+        clientMock
+            .expects('task')
             .once()
             .withArgs('some-task-id')
             .returns({ call: async () => readyRun });
 
-        clientMock.expects('keyValueStore')
-            .never();
+        clientMock.expects('keyValueStore').never();
 
-        const callOutput = await Apify
-            .callTask(taskId, undefined, { waitSecs });
+        const callOutput = await Apify.callTask(taskId, undefined, {
+            waitSecs,
+        });
 
         expect(callOutput).toEqual(readyRun);
         clientMock.restore();
     });
 
-    test('throws if run doesn\'t succeed', async () => {
+    test("throws if run doesn't succeed", async () => {
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('task')
+        clientMock
+            .expects('task')
             .once()
             .withArgs('some-task-id')
             .returns({ call: async () => failedRun });
@@ -549,16 +602,25 @@ describe('Apify.metamorph()', () => {
     test('works as expected', async () => {
         const clientMock = sinon.mock(utils.apifyClient);
         const metamorphStub = sinon.stub().resolves(run);
-        clientMock.expects('run')
+        clientMock
+            .expects('run')
             .once()
             .withArgs('some-run-id', 'some-actor-id')
             .returns({ metamorph: metamorphStub });
 
-        await Apify.metamorph(targetActorId, input, { contentType, build, customAfterSleepMillis: 1 });
-        expect(metamorphStub.args[0]).toEqual([targetActorId, input, {
+        await Apify.metamorph(targetActorId, input, {
+            contentType,
             build,
-            contentType: `${contentType}; charset=utf-8`,
-        }]);
+            customAfterSleepMillis: 1,
+        });
+        expect(metamorphStub.args[0]).toEqual([
+            targetActorId,
+            input,
+            {
+                build,
+                contentType: `${contentType}; charset=utf-8`,
+            },
+        ]);
 
         clientMock.verify();
     });
@@ -566,12 +628,15 @@ describe('Apify.metamorph()', () => {
     test('works without opts and input', async () => {
         const clientMock = sinon.mock(utils.apifyClient);
         const metamorphStub = sinon.stub().resolves(run);
-        clientMock.expects('run')
+        clientMock
+            .expects('run')
             .once()
             .withArgs('some-run-id', 'some-actor-id')
             .returns({ metamorph: metamorphStub });
 
-        await Apify.metamorph(targetActorId, undefined, { customAfterSleepMillis: 1 });
+        await Apify.metamorph(targetActorId, undefined, {
+            customAfterSleepMillis: 1,
+        });
         expect(metamorphStub.args[0]).toEqual([targetActorId, undefined, {}]);
 
         clientMock.verify();
@@ -600,7 +665,8 @@ describe('Apify.addWebhook()', () => {
         process.env[ENV_VARS.IS_AT_HOME] = '1';
 
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('webhooks')
+        clientMock
+            .expects('webhooks')
             .once()
             .returns({ create: async () => webhook });
 
@@ -619,13 +685,15 @@ describe('Apify.addWebhook()', () => {
 
     test('on local logs warning and does nothing', async () => {
         const clientMock = sinon.mock(utils.apifyClient);
-        clientMock.expects('webhooks')
-            .never();
+        clientMock.expects('webhooks').never();
 
         const logMock = sinon.mock(log);
         logMock.expects('warning').once();
 
-        await Apify.addWebhook({ eventTypes: expectedEventTypes, requestUrl: expectedRequestUrl });
+        await Apify.addWebhook({
+            eventTypes: expectedEventTypes,
+            requestUrl: expectedRequestUrl,
+        });
 
         clientMock.verify();
         logMock.verify();
@@ -636,7 +704,10 @@ describe('Apify.addWebhook()', () => {
 
         let isThrow;
         try {
-            await Apify.addWebhook({ eventTypes: expectedEventTypes, requestUrl: expectedRequestUrl });
+            await Apify.addWebhook({
+                eventTypes: expectedEventTypes,
+                requestUrl: expectedRequestUrl,
+            });
         } catch (err) {
             isThrow = true;
         }

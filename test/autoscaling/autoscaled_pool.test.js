@@ -1,4 +1,4 @@
-import _ from 'underscore';
+import * as _ from '../src/underscore';
 import log from '../../build/utils_log';
 import { sleep } from '../../build/utils';
 import AutoscaledPool from '../../build/autoscaling/autoscaled_pool';
@@ -131,7 +131,9 @@ describe('AutoscaledPool', () => {
                 this.okNow = okNow;
                 this.okLately = okLately;
                 this.getCurrentStatus = () => ({ isSystemIdle: this.okNow });
-                this.getHistoricalStatus = () => ({ isSystemIdle: this.okLately });
+                this.getHistoricalStatus = () => ({
+                    isSystemIdle: this.okLately,
+                });
             }
         }
 
@@ -174,20 +176,29 @@ describe('AutoscaledPool', () => {
         test('works with high values', () => {
             // Should not scale because current concurrency is too low.
             pool.desiredConcurrency = 50;
-            pool._currentConcurrency = Math.floor(pool.desiredConcurrency * pool.desiredConcurrencyRatio) - 1;
+            pool._currentConcurrency =
+                Math.floor(
+                    pool.desiredConcurrency * pool.desiredConcurrencyRatio,
+                ) - 1;
             systemStatus.okLately = true;
             pool._autoscale(cb);
             expect(pool.desiredConcurrency).toBe(50);
 
             // Should scale because we bumped up current concurrency.
-            pool._currentConcurrency = Math.floor(pool.desiredConcurrency * pool.desiredConcurrencyRatio);
-            let newConcurrency = pool.desiredConcurrency + Math.ceil(pool.desiredConcurrency * pool.scaleUpStepRatio);
+            pool._currentConcurrency = Math.floor(
+                pool.desiredConcurrency * pool.desiredConcurrencyRatio,
+            );
+            let newConcurrency =
+                pool.desiredConcurrency +
+                Math.ceil(pool.desiredConcurrency * pool.scaleUpStepRatio);
             pool._autoscale(cb);
             expect(pool.desiredConcurrency).toEqual(newConcurrency);
 
             // Should scale down.
             systemStatus.okLately = false;
-            newConcurrency = pool.desiredConcurrency - Math.ceil(pool.desiredConcurrency * pool.scaleDownStepRatio);
+            newConcurrency =
+                pool.desiredConcurrency -
+                Math.ceil(pool.desiredConcurrency * pool.scaleDownStepRatio);
             pool._autoscale(cb);
             expect(pool.desiredConcurrency).toEqual(newConcurrency);
         });
@@ -301,7 +312,9 @@ describe('AutoscaledPool', () => {
             let count = 0;
             const pool = new AutoscaledPool({
                 maxConcurrency: 1,
-                runTaskFunction: async () => { count++; },
+                runTaskFunction: async () => {
+                    count++;
+                },
                 isFinishedFunction: async () => false,
                 isTaskReadyFunction: async () => {
                     if (count > 1) throw new Error('some-ready-error');
@@ -320,9 +333,12 @@ describe('AutoscaledPool', () => {
         // Run the pool and close it after 3s.
         const pool = new AutoscaledPool({
             minConcurrency: 3,
-            runTaskFunction: async () => sleep(1).then(() => { count++; }),
+            runTaskFunction: async () =>
+                sleep(1).then(() => {
+                    count++;
+                }),
             isFinishedFunction: isFinished,
-            isTaskReadyFunction: async () => !await isFinished(),
+            isTaskReadyFunction: async () => !(await isFinished()),
         });
         pool.maybeRunIntervalMillis = 5;
 
@@ -343,8 +359,16 @@ describe('AutoscaledPool', () => {
             maxConcurrency: 1,
             runTaskFunction: async () => {
                 await sleep(1);
-                if (counter === 10) { isTaskReady = false; setTimeout(() => { isTaskReady = true; }, 10); }
-                if (counter === 19) { isTaskReady = false; isFinished = true; }
+                if (counter === 10) {
+                    isTaskReady = false;
+                    setTimeout(() => {
+                        isTaskReady = true;
+                    }, 10);
+                }
+                if (counter === 19) {
+                    isTaskReady = false;
+                    isFinished = true;
+                }
                 counter++;
                 finished.push(Date.now());
             },
@@ -384,7 +408,9 @@ describe('AutoscaledPool', () => {
                     return null;
                 }
             },
-            isFinishedFunction: () => { finished = true; },
+            isFinishedFunction: () => {
+                finished = true;
+            },
             isTaskReadyFunction: () => !aborted,
         });
         await pool.run();
@@ -420,7 +446,9 @@ describe('AutoscaledPool', () => {
         let count = 0;
         const results = [];
         let pauseResolve;
-        const pausePromise = new Promise((res) => { pauseResolve = res; });
+        const pausePromise = new Promise((res) => {
+            pauseResolve = res;
+        });
 
         const pool = new AutoscaledPool({
             maybeRunIntervalSecs: 0.01,
@@ -437,7 +465,9 @@ describe('AutoscaledPool', () => {
 
         let finished = false;
         const runPromise = pool.run();
-        runPromise.then(() => { finished = true; });
+        runPromise.then(() => {
+            finished = true;
+        });
         await pausePromise;
         expect(count).toBe(20);
         expect(finished).toBe(false);

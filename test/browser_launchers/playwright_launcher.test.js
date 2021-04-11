@@ -3,7 +3,7 @@ import http from 'http';
 import util from 'util';
 import portastic from 'portastic';
 import basicAuthParser from 'basic-auth-parser';
-import _ from 'underscore';
+import * as _ from '../src/underscore';
 import sinon from 'sinon';
 import { ENV_VARS } from 'apify-shared/consts';
 import Apify from '../../build/index';
@@ -14,7 +14,11 @@ import { PlaywrightLauncher } from '../../build/browser_launchers/playwright_lau
 let prevEnvHeadless;
 let proxyServer;
 let proxyPort; // eslint-disable-line no-unused-vars
-const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' };
+const proxyAuth = {
+    scheme: 'Basic',
+    username: 'username',
+    password: 'password',
+};
 let wasProxyCalled = false; // eslint-disable-line no-unused-vars
 
 // Setup local proxy server for the tests
@@ -58,36 +62,69 @@ beforeAll(() => {
 afterAll(() => {
     process.env[ENV_VARS.HEADLESS] = prevEnvHeadless;
 
-    if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
+    if (proxyServer)
+        return util.promisify(proxyServer.close).bind(proxyServer)();
 }, 5000);
 
 describe('Apify.launchPlaywright()', () => {
     test('throws on invalid args', () => {
-        expect(Apify.launchPlaywright('some non-object')).rejects.toThrow(Error);
+        expect(Apify.launchPlaywright('some non-object')).rejects.toThrow(
+            Error,
+        );
         expect(Apify.launchPlaywright(1234)).rejects.toThrow(Error);
 
-        expect(Apify.launchPlaywright({ proxyUrl: 234 })).rejects.toThrow(Error);
+        expect(Apify.launchPlaywright({ proxyUrl: 234 })).rejects.toThrow(
+            Error,
+        );
         expect(Apify.launchPlaywright({ proxyUrl: {} })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: 'invalidurl' })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: 'http://host-without-port' })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: 'invalid://somehost:1234' })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: 'https://user:pass@example.com:1234' })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: 'socks4://user:pass@example.com:1234' })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: 'socks5://user:pass@example.com:1234' })).rejects.toThrow(Error);
-        expect(Apify.launchPlaywright({ proxyUrl: ' something really bad' })).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({ proxyUrl: 'invalidurl' }),
+        ).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({ proxyUrl: 'http://host-without-port' }),
+        ).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({ proxyUrl: 'invalid://somehost:1234' }),
+        ).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({
+                proxyUrl: 'https://user:pass@example.com:1234',
+            }),
+        ).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({
+                proxyUrl: 'socks4://user:pass@example.com:1234',
+            }),
+        ).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({
+                proxyUrl: 'socks5://user:pass@example.com:1234',
+            }),
+        ).rejects.toThrow(Error);
+        expect(
+            Apify.launchPlaywright({ proxyUrl: ' something really bad' }),
+        ).rejects.toThrow(Error);
     });
 
     test('opens supports non-HTTP proxies without authentication', async () => {
-        const browser1 = await Apify.launchPlaywright({ proxyUrl: 'socks4://example.com:1234' });
+        const browser1 = await Apify.launchPlaywright({
+            proxyUrl: 'socks4://example.com:1234',
+        });
         browser1.close();
 
-        const browser2 = await Apify.launchPlaywright({ proxyUrl: 'socks5://example.com:1234' });
+        const browser2 = await Apify.launchPlaywright({
+            proxyUrl: 'socks5://example.com:1234',
+        });
         browser2.close();
 
-        const browser3 = await Apify.launchPlaywright({ proxyUrl: 'https://example.com:1234' });
+        const browser3 = await Apify.launchPlaywright({
+            proxyUrl: 'https://example.com:1234',
+        });
         browser3.close();
 
-        const browser4 = await Apify.launchPlaywright({ proxyUrl: 'HTTP://example.com:1234' });
+        const browser4 = await Apify.launchPlaywright({
+            proxyUrl: 'HTTP://example.com:1234',
+        });
         browser4.close();
     });
 
@@ -187,7 +224,9 @@ describe('Apify.launchPlaywright()', () => {
             });
             const plugin = launcher.createBrowserPlugin();
 
-            expect(plugin.launchOptions.executablePath).toBe(utils.getTypicalChromeExecutablePath());
+            expect(plugin.launchOptions.executablePath).toBe(
+                utils.getTypicalChromeExecutablePath(),
+            );
         });
 
         test('allows to be overriden', () => {
